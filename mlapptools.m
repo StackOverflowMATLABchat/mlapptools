@@ -12,8 +12,10 @@ classdef mlapptools
     
     methods (Static)
         function alignstring(uielement, alignment)
+            alignment = lower(alignment);
+            mlapptools.validatealignmentstr(alignment)
             mlapptools.togglewarnings('off')
-            drawnow;
+
             rez = '';
             while ~strcmp(rez, sprintf('"%s"', alignment))
                 try
@@ -22,12 +24,12 @@ classdef mlapptools
                     % 2. Find which element of the DOM we want to edit (as before):
                     data_tag = char(struct(uielement).Controller.ProxyView.PeerNode.getId);
                     % 3. Manipulate the DOM via a JS command
-                    JSstr = sprintf('dojo.style(dojo.query("[data-tag^=''%s'']")[0],"textAlign","%s")', ...
+                    JSstr = sprintf('dojo.style(dojo.query("[data-tag^=''%s'']")[0], "textAlign", "%s")', ...
                                   data_tag, alignment);
                     rez = win.executeJS(JSstr);
                 catch
                     % TODO: See if an infinite loop condition is possible
-                    pause(0.5); % Give the figure (webpage) some more time to load
+                    pause(1); % Give the figure (webpage) some more time to load
                 end
             end
             mlapptools.togglewarnings('on')
@@ -45,6 +47,20 @@ classdef mlapptools
                     warning off MATLAB:structOnObject
                 otherwise
                     % Do nothing
+            end
+        end
+        
+        function validatealignmentstr(alignment)
+            if ~ischar(alignment)
+                msgID = 'mlapptools:alignstring:InvalidInputIype';
+                error(msgID, 'Expected ''%s'', inputs of type ''%s'' not supported', ...
+                      class('Dev-il'), class(alignment));
+            end
+            
+            validstr = {'left', 'right', 'center', 'justify'};
+            if ~any(ismember(validstr, alignment))
+                msgID = 'mlapptools:alignstring:InvalidAlignmentString';
+                error(msgID, 'Invalid string alignment specified: ''%s''', alignment);
             end
         end
     end
