@@ -34,9 +34,34 @@ classdef mlapptools
                     pause(1); % Give the figure (webpage) some more time to load
                 end
             end
+        end
+        
+        
+        function fontWeight(uielement, weight)
+            weight = mlapptools.validatefontweight(weight);
             
+            wt = '';
+            while ~strcmp(wt, sprintf('"%s"', weight))
+                try
+                    % Get a handle to the webwindow
+                    win = mlapptools.getwebwindow(uielement.Parent);
+                    
+                    % Find which element of the DOM we want to edit
+                    data_tag = mlapptools.getdatatag(uielement);
+                    
+                    % Manipulate the DOM via a JS command
+                    widgetID = mlapptools.getwidgetID(win, data_tag);
+                    
+                    fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
+                    wt = win.executeJS(fontwtsetstr);
+                catch err
+                    % TODO: Check the error so we're not catching errors indiscriminately
+                    pause(1); % Give the figure (webpage) some more time to load
+                end
+            end
         end
     end
+    
     
     methods (Static, Access = private)
         function [win] = getwebwindow(uifigurewindow)
@@ -78,10 +103,33 @@ classdef mlapptools
                       class('Dev-il'), class(alignment));
             end
             
-            validstr = {'left', 'right', 'center', 'justify'};
+            validstr = {'left', 'right', 'center', 'justify', 'initial'};
             if ~any(ismember(validstr, alignment))
                 msgID = 'mlapptools:alignstring:InvalidAlignmentString';
                 error(msgID, 'Invalid string alignment specified: ''%s''', alignment);
+            end
+        end
+        
+        function [weight] = validatefontweight(weight)
+            if ischar(weight)
+                weight = lower(weight);
+                validstrs = {'normal', 'bold', 'bolder', 'lighter', 'initial'};
+                
+                if ~any(ismember(weight, validstrs))
+                    msgID = 'mlapptools:fontWeight:InvalidFontWeightString';
+                    error(msgID, 'Invalid font weight specified: ''%s''', alignment);
+                end
+            elseif isnumeric(weight)
+                weight = round(weight, -2);
+                if weight < 100
+                    weight = 100;
+                elseif weight > 900
+                    weight = 900;
+                end
+                
+                weight = num2str(weight);
+            else
+                % Throw error
             end
         end
     end
