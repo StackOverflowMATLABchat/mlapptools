@@ -3,11 +3,6 @@ classdef mlapptools
     %
     % MLAPPTOOLS methods:
     
-    properties
-        % TODO: Move generic portions of repeated dojo query strings here
-        % to reduce copypasta errors as the number of methods expands
-    end
-    
     methods
         function obj = mlapptools
             % Dummy constructor so we don't return an empty class instance
@@ -19,33 +14,50 @@ classdef mlapptools
         function textAlign(uielement, alignment)
             alignment = lower(alignment);
             mlapptools.validatealignmentstr(alignment)
-            mlapptools.togglewarnings('off')
 
             rez = '';
             while ~strcmp(rez, sprintf('"%s"', alignment))
                 try
                     % Get a handle to the webwindow
-                    win = struct(struct(uielement.Parent).Controller).Container.CEF;
+                    win = mlapptools.getwebwindow(uielement.Parent);
                     
                     % Find which element of the DOM we want to edit
-                    data_tag = char(struct(uielement).Controller.ProxyView.PeerNode.getId);
+                    data_tag = mlapptools.getdatatag(uielement);
                     
                     % Manipulate the DOM via a JS command
-                    widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
-                    widgetID = win.executeJS(widgetquerystr);
-                    widgetID = widgetID(2:end-1);
+                    widgetID = mlapptools.getwidgetID(win, data_tag);
                     
                     alignsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
                     rez = win.executeJS(alignsetstr);
-                catch
+                catch err
+                    % TODO: Check the error so we're not catching errors indiscriminately
                     pause(1); % Give the figure (webpage) some more time to load
                 end
             end
-            mlapptools.togglewarnings('on')
+            
         end
     end
     
     methods (Static, Access = private)
+        function [win] = getwebwindow(uifigurewindow)
+            % TODO: Check that we've been passed an app designer figure window
+            mlapptools.togglewarnings('off')
+            win = struct(struct(uifigurewindow).Controller).Container.CEF;
+            mlapptools.togglewarnings('on')
+        end
+                
+        function [data_tag] = getdatatag(uielement)
+            mlapptools.togglewarnings('off')
+            data_tag = char(struct(uielement).Controller.ProxyView.PeerNode.getId);
+            mlapptools.togglewarnings('on')
+        end
+        
+        function [widgetID] = getwidgetID(win, data_tag)
+            widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
+            widgetID = win.executeJS(widgetquerystr);
+            widgetID = widgetID(2:end-1);
+        end
+        
         function togglewarnings(togglestr)
             switch lower(togglestr)
                 case 'on'
