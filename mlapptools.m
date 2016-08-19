@@ -3,6 +3,11 @@ classdef mlapptools
     %
     % MLAPPTOOLS methods:
     
+    properties
+        % TODO: Move generic portions of repeated dojo query strings here
+        % to reduce copypasta errors as the number of methods expands
+    end
+    
     methods
         function obj = mlapptools
             % Dummy constructor so we don't return an empty class instance
@@ -11,7 +16,7 @@ classdef mlapptools
     end
     
     methods (Static)
-        function alignstring(uielement, alignment)
+        function textAlign(uielement, alignment)
             alignment = lower(alignment);
             mlapptools.validatealignmentstr(alignment)
             mlapptools.togglewarnings('off')
@@ -19,16 +24,20 @@ classdef mlapptools
             rez = '';
             while ~strcmp(rez, sprintf('"%s"', alignment))
                 try
-                    % 1. Get a handle to the webwindow:
+                    % Get a handle to the webwindow
                     win = struct(struct(uielement.Parent).Controller).Container.CEF;
-                    % 2. Find which element of the DOM we want to edit (as before):
+                    
+                    % Find which element of the DOM we want to edit
                     data_tag = char(struct(uielement).Controller.ProxyView.PeerNode.getId);
-                    % 3. Manipulate the DOM via a JS command
-                    JSstr = sprintf('dojo.style(dojo.query("[data-tag^=''%s'']")[0], "textAlign", "%s")', ...
-                                  data_tag, alignment);
-                    rez = win.executeJS(JSstr);
+                    
+                    % Manipulate the DOM via a JS command
+                    widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
+                    widgetID = win.executeJS(widgetquerystr);
+                    widgetID = widgetID(2:end-1);
+                    
+                    alignsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
+                    rez = win.executeJS(alignsetstr);
                 catch
-                    % TODO: See if an infinite loop condition is possible
                     pause(1); % Give the figure (webpage) some more time to load
                 end
             end
