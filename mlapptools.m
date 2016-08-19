@@ -10,6 +10,7 @@ classdef mlapptools
         end
     end
     
+    
     methods (Static)
         function textAlign(uielement, alignment)
             alignment = lower(alignment);
@@ -60,6 +61,31 @@ classdef mlapptools
                 end
             end
         end
+        
+        
+        function fontcolor(uielement, newcolor)
+            newcolor = mlapptools.validateCSScolor(newcolor);
+            
+            DOMcolor = '';
+            while ~strcmp(DOMcolor, sprintf('"%s"', newcolor))
+                try
+                    % Get a handle to the webwindow
+                    win = mlapptools.getwebwindow(uielement.Parent);
+                    
+                    % Find which element of the DOM we want to edit
+                    data_tag = mlapptools.getdatatag(uielement);
+                    
+                    % Manipulate the DOM via a JS command
+                    widgetID = mlapptools.getwidgetID(win, data_tag);
+                    
+                    fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
+                    DOMcolor = win.executeJS(fontwtsetstr);
+                catch err
+                    % TODO: Check the error so we're not catching errors indiscriminately
+                    pause(1); % Give the figure (webpage) some more time to load
+                end
+            end
+        end
     end
     
     
@@ -70,18 +96,21 @@ classdef mlapptools
             win = struct(struct(uifigurewindow).Controller).Container.CEF;
             mlapptools.togglewarnings('on')
         end
-                
+            
+        
         function [data_tag] = getdatatag(uielement)
             mlapptools.togglewarnings('off')
             data_tag = char(struct(uielement).Controller.ProxyView.PeerNode.getId);
             mlapptools.togglewarnings('on')
         end
         
+        
         function [widgetID] = getwidgetID(win, data_tag)
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
             widgetID = win.executeJS(widgetquerystr);
             widgetID = widgetID(2:end-1);
         end
+        
         
         function togglewarnings(togglestr)
             switch lower(togglestr)
@@ -110,6 +139,7 @@ classdef mlapptools
             end
         end
         
+        
         function [weight] = validatefontweight(weight)
             if ischar(weight)
                 weight = lower(weight);
@@ -131,6 +161,10 @@ classdef mlapptools
             else
                 % Throw error
             end
+        end
+        
+        
+        function [newcolor] = validateCSScolor(newcolor)
         end
     end
 end
