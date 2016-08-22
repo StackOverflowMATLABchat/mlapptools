@@ -20,14 +20,7 @@ classdef mlapptools
             alignment = lower(alignment);
             mlapptools.validatealignmentstr(alignment)
             
-            % Get a handle to the webwindow
-            win = mlapptools.getWebWindow(uielement.Parent);
-            
-            % Find which element of the DOM we want to edit
-            data_tag = mlapptools.getDataTag(uielement);
-            
-            % Manipulate the DOM via a JS command
-            widgetID = mlapptools.getWidgetID(win, data_tag);
+            [win, widgetID] = mlapptools.getWebElements(uielement);
             
             alignsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
             win.executeJS(alignsetstr);
@@ -37,31 +30,17 @@ classdef mlapptools
         function fontWeight(uielement, weight)
             weight = mlapptools.validatefontweight(weight);
             
-            % Get a handle to the webwindow
-            win = mlapptools.getWebWindow(uielement.Parent);
-            
-            % Find which element of the DOM we want to edit
-            data_tag = mlapptools.getDataTag(uielement);
-            
-            % Manipulate the DOM via a JS command
-            widgetID = mlapptools.getWidgetID(win, data_tag);
+            [win, widgetID] = mlapptools.getWebElements(uielement);
             
             fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
             win.executeJS(fontwtsetstr);
         end
         
         
-        function fontcolor(uielement, newcolor)
+        function fontColor(uielement, newcolor)
             newcolor = mlapptools.validateCSScolor(newcolor);
 
-            % Get a handle to the webwindow
-            win = mlapptools.getWebWindow(uielement.Parent);
-            
-            % Find which element of the DOM we want to edit
-            data_tag = mlapptools.getDataTag(uielement);
-            
-            % Manipulate the DOM via a JS command
-            widgetID = mlapptools.getWidgetID(win, data_tag);
+            [win, widgetID] = mlapptools.getWebElements(uielement);
             
             fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
             win.executeJS(fontwtsetstr);
@@ -133,6 +112,18 @@ classdef mlapptools
                       'WidgetID query timed out after %u seconds, UI needs more time to load', ...
                       mlapptools.querytimeout);
             end
+        end
+        
+        
+        function [win, widgetID] = getWebElements(uielement)
+            % Get a handle to the webwindow
+            win = mlapptools.getWebWindow(uielement.Parent);
+            
+            % Find which element of the DOM we want to edit
+            data_tag = mlapptools.getDataTag(uielement);
+            
+            % Manipulate the DOM via a JS command
+            widgetID = mlapptools.getWidgetID(win, data_tag);
         end
         
         
