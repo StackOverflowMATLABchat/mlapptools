@@ -3,6 +3,10 @@ classdef mlapptools
     %
     % MLAPPTOOLS methods:
     
+    properties (Constant)
+        querytimeout = 5;  % Dojo query timeout period, seconds
+    end
+    
     methods
         function obj = mlapptools
             % Dummy constructor so we don't return an empty class instance
@@ -15,76 +19,52 @@ classdef mlapptools
         function textAlign(uielement, alignment)
             alignment = lower(alignment);
             mlapptools.validatealignmentstr(alignment)
-
-            rez = '';
-            while ~strcmp(rez, sprintf('"%s"', alignment))
-                try
-                    % Get a handle to the webwindow
-                    win = mlapptools.getwebwindow(uielement.Parent);
-                    
-                    % Find which element of the DOM we want to edit
-                    data_tag = mlapptools.getdatatag(uielement);
-                    
-                    % Manipulate the DOM via a JS command
-                    widgetID = mlapptools.getwidgetID(win, data_tag);
-                    
-                    alignsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
-                    rez = win.executeJS(alignsetstr);
-                catch err
-                    % TODO: Check the error so we're not catching errors indiscriminately
-                    pause(1); % Give the figure (webpage) some more time to load
-                end
-            end
+            
+            % Get a handle to the webwindow
+            win = mlapptools.getwebwindow(uielement.Parent);
+            
+            % Find which element of the DOM we want to edit
+            data_tag = mlapptools.getdatatag(uielement);
+            
+            % Manipulate the DOM via a JS command
+            widgetID = mlapptools.getwidgetID(win, data_tag);
+            
+            alignsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
+            win.executeJS(alignsetstr);
         end
         
         
         function fontWeight(uielement, weight)
             weight = mlapptools.validatefontweight(weight);
             
-            wt = '';
-            while ~strcmp(wt, sprintf('"%s"', weight))
-                try
-                    % Get a handle to the webwindow
-                    win = mlapptools.getwebwindow(uielement.Parent);
-                    
-                    % Find which element of the DOM we want to edit
-                    data_tag = mlapptools.getdatatag(uielement);
-                    
-                    % Manipulate the DOM via a JS command
-                    widgetID = mlapptools.getwidgetID(win, data_tag);
-                    
-                    fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
-                    wt = win.executeJS(fontwtsetstr);
-                catch err
-                    % TODO: Check the error so we're not catching errors indiscriminately
-                    pause(1); % Give the figure (webpage) some more time to load
-                end
-            end
+            % Get a handle to the webwindow
+            win = mlapptools.getwebwindow(uielement.Parent);
+            
+            % Find which element of the DOM we want to edit
+            data_tag = mlapptools.getdatatag(uielement);
+            
+            % Manipulate the DOM via a JS command
+            widgetID = mlapptools.getwidgetID(win, data_tag);
+            
+            fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
+            win.executeJS(fontwtsetstr);
         end
         
         
         function fontcolor(uielement, newcolor)
             newcolor = mlapptools.validateCSScolor(newcolor);
+
+            % Get a handle to the webwindow
+            win = mlapptools.getwebwindow(uielement.Parent);
             
-            DOMcolor = '';
-            while ~strcmp(DOMcolor, sprintf('"%s"', newcolor))
-                try
-                    % Get a handle to the webwindow
-                    win = mlapptools.getwebwindow(uielement.Parent);
-                    
-                    % Find which element of the DOM we want to edit
-                    data_tag = mlapptools.getdatatag(uielement);
-                    
-                    % Manipulate the DOM via a JS command
-                    widgetID = mlapptools.getwidgetID(win, data_tag);
-                    
-                    fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
-                    DOMcolor = win.executeJS(fontwtsetstr);
-                catch err
-                    % TODO: Check the error so we're not catching errors indiscriminately
-                    pause(1); % Give the figure (webpage) some more time to load
-                end
-            end
+            % Find which element of the DOM we want to edit
+            data_tag = mlapptools.getdatatag(uielement);
+            
+            % Manipulate the DOM via a JS command
+            widgetID = mlapptools.getwidgetID(win, data_tag);
+            
+            fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
+            win.executeJS(fontwtsetstr);
         end
     end
     
@@ -93,8 +73,29 @@ classdef mlapptools
         function [win] = getwebwindow(uifigurewindow)
             % TODO: Check that we've been passed an app designer figure window
             mlapptools.togglewarnings('off')
-            win = struct(struct(uifigurewindow).Controller).Container.CEF;
+            
+            tic
+            while true && (toc < mlapptools.querytimeout)
+                try
+                    win = struct(struct(uifigurewindow).Controller).Container.CEF;
+                    break
+                catch err
+                    if strcmp(err.identifier, 'MATLAB:nonExistentField')
+                        pause(0.01)
+                    else
+                        mlapptools.togglewarnings('on')
+                        rethrow(err)
+                    end
+                end
+            end
             mlapptools.togglewarnings('on')
+            
+            if toc < mlapptools.querytimeout
+                msgID = 'mlapptools:getwidgetID:QueryTimeout';
+                error(msgID, ...
+                    'WidgetID query timed out after %u seconds, UI needs more time to load', ...
+                    mlapptools.querytimeout);
+            end
         end
             
         
@@ -107,8 +108,30 @@ classdef mlapptools
         
         function [widgetID] = getwidgetID(win, data_tag)
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
-            widgetID = win.executeJS(widgetquerystr);
-            widgetID = widgetID(2:end-1);
+            
+            tic
+            while true && (toc < mlapptools.querytimeout)
+                try
+                    widgetID = win.executeJS(widgetquerystr);
+                    widgetID = widgetID(2:end-1);
+                    break
+                catch err
+                    if ~isempty(strfind(err.message, 'JavaScript error: Uncaught ReferenceError: dojo is not defined'))
+                        pause(0.01)
+                    else
+                        mlapptools.togglewarnings('on')
+                        rethrow(err)
+                    end
+                end
+            end
+            mlapptools.togglewarnings('on')
+            
+            if toc < mlapptools.querytimeout
+                msgID = 'mlapptools:getwidgetID:QueryTimeout';
+                error(msgID, ...
+                      'WidgetID query timed out after %u seconds, UI needs more time to load', ...
+                      mlapptools.querytimeout);
+            end
         end
         
         
@@ -125,6 +148,7 @@ classdef mlapptools
             end
         end
         
+       
         function validatealignmentstr(alignment)
             if ~ischar(alignment)
                 msgID = 'mlapptools:alignstring:InvalidInputIype';
