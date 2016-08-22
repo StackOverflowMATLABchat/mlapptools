@@ -21,13 +21,13 @@ classdef mlapptools
             mlapptools.validatealignmentstr(alignment)
             
             % Get a handle to the webwindow
-            win = mlapptools.getwebwindow(uielement.Parent);
+            win = mlapptools.getWebWindow(uielement.Parent);
             
             % Find which element of the DOM we want to edit
-            data_tag = mlapptools.getdatatag(uielement);
+            data_tag = mlapptools.getDataTag(uielement);
             
             % Manipulate the DOM via a JS command
-            widgetID = mlapptools.getwidgetID(win, data_tag);
+            widgetID = mlapptools.getWidgetID(win, data_tag);
             
             alignsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
             win.executeJS(alignsetstr);
@@ -38,13 +38,13 @@ classdef mlapptools
             weight = mlapptools.validatefontweight(weight);
             
             % Get a handle to the webwindow
-            win = mlapptools.getwebwindow(uielement.Parent);
+            win = mlapptools.getWebWindow(uielement.Parent);
             
             % Find which element of the DOM we want to edit
-            data_tag = mlapptools.getdatatag(uielement);
+            data_tag = mlapptools.getDataTag(uielement);
             
             % Manipulate the DOM via a JS command
-            widgetID = mlapptools.getwidgetID(win, data_tag);
+            widgetID = mlapptools.getWidgetID(win, data_tag);
             
             fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
             win.executeJS(fontwtsetstr);
@@ -55,13 +55,13 @@ classdef mlapptools
             newcolor = mlapptools.validateCSScolor(newcolor);
 
             % Get a handle to the webwindow
-            win = mlapptools.getwebwindow(uielement.Parent);
+            win = mlapptools.getWebWindow(uielement.Parent);
             
             % Find which element of the DOM we want to edit
-            data_tag = mlapptools.getdatatag(uielement);
+            data_tag = mlapptools.getDataTag(uielement);
             
             % Manipulate the DOM via a JS command
-            widgetID = mlapptools.getwidgetID(win, data_tag);
+            widgetID = mlapptools.getWidgetID(win, data_tag);
             
             fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
             win.executeJS(fontwtsetstr);
@@ -70,7 +70,7 @@ classdef mlapptools
     
     
     methods (Static, Access = private)
-        function [win] = getwebwindow(uifigurewindow)
+        function [win] = getWebWindow(uifigurewindow)
             % TODO: Check that we've been passed an app designer figure window
             mlapptools.togglewarnings('off')
             
@@ -90,8 +90,8 @@ classdef mlapptools
             end
             mlapptools.togglewarnings('on')
             
-            if toc < mlapptools.querytimeout
-                msgID = 'mlapptools:getwidgetID:QueryTimeout';
+            if toc >= mlapptools.querytimeout
+                msgID = 'mlapptools:getWidgetID:QueryTimeout';
                 error(msgID, ...
                     'WidgetID query timed out after %u seconds, UI needs more time to load', ...
                     mlapptools.querytimeout);
@@ -99,14 +99,14 @@ classdef mlapptools
         end
             
         
-        function [data_tag] = getdatatag(uielement)
+        function [data_tag] = getDataTag(uielement)
             mlapptools.togglewarnings('off')
             data_tag = char(struct(uielement).Controller.ProxyView.PeerNode.getId);
             mlapptools.togglewarnings('on')
         end
         
         
-        function [widgetID] = getwidgetID(win, data_tag)
+        function [widgetID] = getWidgetID(win, data_tag)
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
             
             tic
@@ -116,7 +116,8 @@ classdef mlapptools
                     widgetID = widgetID(2:end-1);
                     break
                 catch err
-                    if ~isempty(strfind(err.message, 'JavaScript error: Uncaught ReferenceError: dojo is not defined'))
+                    if ~isempty(strfind(err.message, 'JavaScript error: Uncaught ReferenceError: dojo is not defined')) || ...
+                            ~isempty(strfind(err.message, 'Cannot read property ''widgetid'' of null'))
                         pause(0.01)
                     else
                         mlapptools.togglewarnings('on')
@@ -126,8 +127,8 @@ classdef mlapptools
             end
             mlapptools.togglewarnings('on')
             
-            if toc < mlapptools.querytimeout
-                msgID = 'mlapptools:getwidgetID:QueryTimeout';
+            if toc >= mlapptools.querytimeout
+                msgID = 'mlapptools:getWidgetID:QueryTimeout';
                 error(msgID, ...
                       'WidgetID query timed out after %u seconds, UI needs more time to load', ...
                       mlapptools.querytimeout);
