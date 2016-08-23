@@ -163,7 +163,7 @@ classdef mlapptools
                 
                 if ~any(ismember(weight, validstrs))
                     msgID = 'mlapptools:fontWeight:InvalidFontWeightString';
-                    error(msgID, 'Invalid font weight specified: ''%s''', alignment);
+                    error(msgID, 'Invalid font weight specified: ''%s''', weight);
                 end
             elseif isnumeric(weight)
                 weight = round(weight, -2);
@@ -175,7 +175,8 @@ classdef mlapptools
                 
                 weight = num2str(weight);
             else
-                % Throw error
+                msgID = 'mlapptools:fontWeight:InvalidFontWeight';
+                error(msgID, 'Invalid font weight specified: ''%s''', weight);
             end
         end
         
