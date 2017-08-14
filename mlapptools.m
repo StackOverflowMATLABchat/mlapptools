@@ -56,7 +56,12 @@ classdef mlapptools
             tic
             while true && (toc < mlapptools.querytimeout)
                 try
-                    win = struct(struct(uifigurewindow).Controller).Container.CEF;
+                    % Add check for container change in R2017a (version 9.2)
+                    if verLessThan('matlab', '9.2')
+                        win = struct(struct(uifigurewindow).Controller).Container.CEF;
+                    else
+                        win = struct(struct(struct(uifigurewindow).Controller).PlatformHost).CEF;
+                    end
                     break
                 catch err
                     if strcmp(err.identifier, 'MATLAB:nonExistentField')
