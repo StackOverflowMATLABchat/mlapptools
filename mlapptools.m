@@ -1,7 +1,13 @@
 classdef mlapptools
-    % MLAPPTOOLS is a class definition
+    % MLAPPTOOLS A collection of static methods for customizing various aspects
+    % MATLAB App Designer UIFigures.
     %
     % MLAPPTOOLS methods:
+    % textAlign  - utility method for modifying text alignment.
+    % fontWeight - utility method for modifying font weight (bold etc.).
+    % fontColor  - utility method for modifying font color.
+    % setStyle   - utility method for modifying styles that do not (yet) have a
+    %              dedicated mutator.
     
     properties (Access = private, Constant = true)
         QUERY_TIMEOUT = 5;  % Dojo query timeout period, seconds
@@ -13,9 +19,10 @@ classdef mlapptools
             clear obj
         end
     end
-    
-    
+        
     methods (Static)
+            
+    methods (Access = public, Static = true)
         function textAlign(uielement, alignment)
             alignment = lower(alignment);
             mlapptools.validatealignmentstr(alignment)
@@ -45,10 +52,32 @@ classdef mlapptools
             fontColorSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
             win.executeJS(fontColorSetStr);
         end
-    end
-    
-    
-    methods (Static, Access = private)
+        
+        
+        function widgetID = setStyle(hControl, styleAttr, styleValue)
+            % This method provides a simple interface for modifying style attributes
+            % of uicontrols.
+            %
+            % WARNING: Due to the large amount of available style attributes and 
+            % corresponding settings, input checking is not performed. As this
+            % might lead to unexpected results or errors - USE AT YOUR OWN RISK!
+            [win, widgetID] = mlapptools.getWebElements(hControl);
+            
+            styleSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "%s", "%s")', widgetID, styleAttr, styleValue);
+            % ^ this might result in junk if widgetId=='null'.
+            try 
+              win.executeJS(styleSetStr);
+              % ^ this might crash in case of invalid styleAttr/styleValue.
+            catch ME
+                % Test for "Invalid or unexpected token":
+                ME = mlapptools.checkJavascriptSyntaxError(ME, styleSetStr);
+                rethrow(ME);       
+            end
+        end
+
+    end % Public static methods
+        
+    methods (Static = true, Access = private)
         function [win] = getWebWindow(uifigurewindow)
             mlapptools.togglewarnings('off')
             % Test if uifigurewindow is a valid handle
@@ -194,6 +223,20 @@ classdef mlapptools
         
         
         function [newcolor] = validateCSScolor(newcolor)
+          % TODO
+        end
+        
+        
+        function ME = checkJavascriptSyntaxError(ME,styleSetStr)        
+            if (strcmp(ME.identifier,'cefclient:webwindow:jserror'))                    
+                c = strfind(ME.message,'Uncaught SyntaxError:');
+                if ~isempty(c)
+                  v = str2double(regexp(ME.message(c:end),'-?\d+\.?\d*|-?\d*\.?\d+','match'));
+                  msg = ['Syntax error: unexpected token in styleValue: ' styleSetStr(v(1),v(2))];
+                  causeException = MException('mlapptools:setStyle:invalidInputs',msg);
+                  ME = addCause(ME,causeException);
+                end
+            end
         end
     end
 end
