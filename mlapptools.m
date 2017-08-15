@@ -1,4 +1,4 @@
-classdef mlapptools
+classdef (Abstract) mlapptools
     % MLAPPTOOLS A collection of static methods for customizing various aspects
     % MATLAB App Designer UIFigures.
     %
@@ -12,15 +12,6 @@ classdef mlapptools
     properties (Access = private, Constant = true)
         QUERY_TIMEOUT = 5;  % Dojo query timeout period, seconds
     end
-    
-    methods
-        function obj = mlapptools
-            % Dummy constructor so we don't return an empty class instance
-            clear obj
-        end
-    end
-        
-    methods (Static)
             
     methods (Access = public, Static = true)
         function textAlign(uielement, alignment)
