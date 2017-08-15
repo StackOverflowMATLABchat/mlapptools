@@ -1,29 +1,27 @@
-classdef mlapptools
-    % MLAPPTOOLS is a class definition
+classdef (Abstract) mlapptools
+    % MLAPPTOOLS A collection of static methods for customizing various aspects
+    % MATLAB App Designer UIFigures.
     %
     % MLAPPTOOLS methods:
+    % textAlign  - utility method for modifying text alignment.
+    % fontWeight - utility method for modifying font weight (bold etc.).
+    % fontColor  - utility method for modifying font color.
+    % setStyle   - utility method for modifying styles that do not (yet) have a
+    %              dedicated mutator.
     
-    properties (Constant)
-        querytimeout = 5;  % Dojo query timeout period, seconds
+    properties (Access = private, Constant = true)
+        QUERY_TIMEOUT = 5;  % Dojo query timeout period, seconds
     end
-    
-    methods
-        function obj = mlapptools
-            % Dummy constructor so we don't return an empty class instance
-            clear obj
-        end
-    end
-    
-    
-    methods (Static)
+            
+    methods (Access = public, Static = true)
         function textAlign(uielement, alignment)
             alignment = lower(alignment);
             mlapptools.validatealignmentstr(alignment)
             
             [win, widgetID] = mlapptools.getWebElements(uielement);
             
-            alignsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
-            win.executeJS(alignsetstr);
+            alignSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
+            win.executeJS(alignSetStr);
         end
         
         
@@ -32,8 +30,8 @@ classdef mlapptools
             
             [win, widgetID] = mlapptools.getWebElements(uielement);
             
-            fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
-            win.executeJS(fontwtsetstr);
+            fontWeightSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
+            win.executeJS(fontWeightSetStr);
         end
         
         
@@ -42,25 +40,54 @@ classdef mlapptools
 
             [win, widgetID] = mlapptools.getWebElements(uielement);
             
-            fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
-            win.executeJS(fontwtsetstr);
+            fontColorSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
+            win.executeJS(fontColorSetStr);
         end
-    end
-    
-    
-    methods (Static, Access = private)
+        
+        
+        function widgetID = setStyle(hControl, styleAttr, styleValue)
+            % This method provides a simple interface for modifying style attributes
+            % of uicontrols.
+            %
+            % WARNING: Due to the large amount of available style attributes and 
+            % corresponding settings, input checking is not performed. As this
+            % might lead to unexpected results or errors - USE AT YOUR OWN RISK!
+            [win, widgetID] = mlapptools.getWebElements(hControl);
+            
+            styleSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "%s", "%s")', widgetID, styleAttr, styleValue);
+            % ^ this might result in junk if widgetId=='null'.
+            try 
+              win.executeJS(styleSetStr);
+              % ^ this might crash in case of invalid styleAttr/styleValue.
+            catch ME
+                % Test for "Invalid or unexpected token":
+                ME = mlapptools.checkJavascriptSyntaxError(ME, styleSetStr);
+                rethrow(ME);       
+            end
+        end
+
+    end % Public static methods
+        
+    methods (Static = true, Access = private)
         function [win] = getWebWindow(uifigurewindow)
-            % TODO: Check that we've been passed an app designer figure window
             mlapptools.togglewarnings('off')
+            % Test if uifigurewindow is a valid handle
+            if ~isa(uifigurewindow,'matlab.ui.Figure') || ...
+                isempty(struct(uifigurewindow).ControllerInfo)
+                msgID = 'mlapptools:getWebWindow:NotUIFigure';
+                error(msgID, 'The provided window handle is not of a UIFigure.');
+            end
             
             tic
-            while true && (toc < mlapptools.querytimeout)
+            while true && (toc < mlapptools.QUERY_TIMEOUT)
                 try
-                    % Add check for container change in R2017a (version 9.2)
-                    if verLessThan('matlab', '9.2')
-                        win = struct(struct(uifigurewindow).Controller).Container.CEF;
-                    else
-                        win = struct(struct(struct(uifigurewindow).Controller).PlatformHost).CEF;
+                    hController = struct(struct(uifigurewindow).Controller);
+                    % Check for Controller version:
+                    switch subsref(ver('matlab'), substruct('.','Version'))
+                      case {'9.0','9.1'} % R2016a or R2016b
+                        win = hController.Container.CEF;
+                      otherwise  % R2017a onward
+                        win = struct(hController.PlatformHost).CEF;
                     end
                     break
                 catch err
@@ -74,11 +101,11 @@ classdef mlapptools
             end
             mlapptools.togglewarnings('on')
             
-            if toc >= mlapptools.querytimeout
+            if toc >= mlapptools.QUERY_TIMEOUT
                 msgID = 'mlapptools:getWidgetID:QueryTimeout';
                 error(msgID, ...
                     'WidgetID query timed out after %u seconds, UI needs more time to load', ...
-                    mlapptools.querytimeout);
+                    mlapptools.QUERY_TIMEOUT);
             end
         end
             
@@ -94,7 +121,7 @@ classdef mlapptools
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
             
             tic
-            while true && (toc < mlapptools.querytimeout)
+            while true && (toc < mlapptools.QUERY_TIMEOUT)
                 try
                     widgetID = win.executeJS(widgetquerystr);
                     widgetID = widgetID(2:end-1);
@@ -111,11 +138,11 @@ classdef mlapptools
             end
             mlapptools.togglewarnings('on')
             
-            if toc >= mlapptools.querytimeout
+            if toc >= mlapptools.QUERY_TIMEOUT
                 msgID = 'mlapptools:getWidgetID:QueryTimeout';
                 error(msgID, ...
                       'WidgetID query timed out after %u seconds, UI needs more time to load', ...
-                      mlapptools.querytimeout);
+                      mlapptools.QUERY_TIMEOUT);
             end
         end
         
@@ -187,6 +214,20 @@ classdef mlapptools
         
         
         function [newcolor] = validateCSScolor(newcolor)
+          % TODO
+        end
+        
+        
+        function ME = checkJavascriptSyntaxError(ME,styleSetStr)        
+            if (strcmp(ME.identifier,'cefclient:webwindow:jserror'))                    
+                c = strfind(ME.message,'Uncaught SyntaxError:');
+                if ~isempty(c)
+                  v = str2double(regexp(ME.message(c:end),'-?\d+\.?\d*|-?\d*\.?\d+','match'));
+                  msg = ['Syntax error: unexpected token in styleValue: ' styleSetStr(v(1),v(2))];
+                  causeException = MException('mlapptools:setStyle:invalidInputs',msg);
+                  ME = addCause(ME,causeException);
+                end
+            end
         end
     end
 end
