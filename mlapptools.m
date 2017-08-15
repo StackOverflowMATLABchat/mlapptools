@@ -61,11 +61,13 @@ classdef mlapptools
             tic
             while true && (toc < mlapptools.TIMEOUT)
                 try
-                    % Add check for container change in R2017a (version 9.2)
-                    if verLessThan('matlab', '9.2')
-                        win = struct(struct(uifigurewindow).Controller).Container.CEF;
-                    else
-                        win = struct(struct(struct(uifigurewindow).Controller).PlatformHost).CEF;
+                    hController = struct(struct(uifigurewindow).Controller);
+                    % Check for Controller version:
+                    switch subsref(ver('matlab'), substruct('.','Version'))
+                      case '9.0' % R2016a 
+                        win = hController.Container.CEF;
+                      otherwise  % R2016b onward
+                        win = struct(hController.PlatformHost).CEF;
                     end
                     break
                 catch err
