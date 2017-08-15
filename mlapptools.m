@@ -84,9 +84,9 @@ classdef (Abstract) mlapptools
                     hController = struct(struct(uifigurewindow).Controller);
                     % Check for Controller version:
                     switch subsref(ver('matlab'), substruct('.','Version'))
-                      case '9.0' % R2016a 
+                      case {'9.0','9.1'} % R2016a or R2016b
                         win = hController.Container.CEF;
-                      otherwise  % R2016b onward
+                      otherwise  % R2017a onward
                         win = struct(hController.PlatformHost).CEF;
                     end
                     break
