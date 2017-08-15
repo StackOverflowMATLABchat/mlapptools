@@ -3,8 +3,8 @@ classdef mlapptools
     %
     % MLAPPTOOLS methods:
     
-    properties (Constant)
-        querytimeout = 5;  % Dojo query timeout period, seconds
+    properties (Access = private, Constant = true)
+        QUERY_TIMEOUT = 5;  % Dojo query timeout period, seconds
     end
     
     methods
@@ -22,8 +22,8 @@ classdef mlapptools
             
             [win, widgetID] = mlapptools.getWebElements(uielement);
             
-            alignsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
-            win.executeJS(alignsetstr);
+            alignSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
+            win.executeJS(alignSetStr);
         end
         
         
@@ -32,8 +32,8 @@ classdef mlapptools
             
             [win, widgetID] = mlapptools.getWebElements(uielement);
             
-            fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
-            win.executeJS(fontwtsetstr);
+            fontWeightSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
+            win.executeJS(fontWeightSetStr);
         end
         
         
@@ -42,8 +42,8 @@ classdef mlapptools
 
             [win, widgetID] = mlapptools.getWebElements(uielement);
             
-            fontwtsetstr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
-            win.executeJS(fontwtsetstr);
+            fontColorSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
+            win.executeJS(fontColorSetStr);
         end
     end
     
@@ -54,7 +54,7 @@ classdef mlapptools
             mlapptools.togglewarnings('off')
             
             tic
-            while true && (toc < mlapptools.querytimeout)
+            while true && (toc < mlapptools.TIMEOUT)
                 try
                     % Add check for container change in R2017a (version 9.2)
                     if verLessThan('matlab', '9.2')
@@ -74,11 +74,11 @@ classdef mlapptools
             end
             mlapptools.togglewarnings('on')
             
-            if toc >= mlapptools.querytimeout
+            if toc >= mlapptools.QUERY_TIMEOUT
                 msgID = 'mlapptools:getWidgetID:QueryTimeout';
                 error(msgID, ...
                     'WidgetID query timed out after %u seconds, UI needs more time to load', ...
-                    mlapptools.querytimeout);
+                    mlapptools.QUERY_TIMEOUT);
             end
         end
             
@@ -94,7 +94,7 @@ classdef mlapptools
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
             
             tic
-            while true && (toc < mlapptools.querytimeout)
+            while true && (toc < mlapptools.QUERY_TIMEOUT)
                 try
                     widgetID = win.executeJS(widgetquerystr);
                     widgetID = widgetID(2:end-1);
@@ -111,11 +111,11 @@ classdef mlapptools
             end
             mlapptools.togglewarnings('on')
             
-            if toc >= mlapptools.querytimeout
+            if toc >= mlapptools.QUERY_TIMEOUT
                 msgID = 'mlapptools:getWidgetID:QueryTimeout';
                 error(msgID, ...
                       'WidgetID query timed out after %u seconds, UI needs more time to load', ...
-                      mlapptools.querytimeout);
+                      mlapptools.QUERY_TIMEOUT);
             end
         end
         
