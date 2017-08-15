@@ -88,7 +88,7 @@ classdef mlapptools
             end
             
             tic
-            while true && (toc < mlapptools.TIMEOUT)
+            while true && (toc < mlapptools.QUERY_TIMEOUT)
                 try
                     hController = struct(struct(uifigurewindow).Controller);
                     % Check for Controller version:
