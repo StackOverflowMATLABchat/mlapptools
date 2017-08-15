@@ -50,8 +50,13 @@ classdef mlapptools
     
     methods (Static, Access = private)
         function [win] = getWebWindow(uifigurewindow)
-            % TODO: Check that we've been passed an app designer figure window
             mlapptools.togglewarnings('off')
+            % Test if uifigurewindow is a valid handle
+            if ~isa(uifigurewindow,'matlab.ui.Figure') || ...
+                isempty(struct(uifigurewindow).ControllerInfo)
+                msgID = 'mlapptools:getWebWindow:NotUIFigure';
+                error(msgID, 'The provided window handle is not of a UIFigure.');
+            end
             
             tic
             while true && (toc < mlapptools.TIMEOUT)
