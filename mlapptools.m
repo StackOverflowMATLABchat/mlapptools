@@ -17,13 +17,13 @@ classdef (Abstract) mlapptools
     methods (Access = public, Static = true)
         function textAlign(uielement, alignment)
             alignment = lower(alignment);
-            mlapptools.validatealignmentstr(alignment)
+            mlapptools.validateAlignmentStr(alignment)
             
             [win, widgetID] = mlapptools.getWebElements(uielement);
             
             alignSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
             win.executeJS(alignSetStr);
-        end
+        end % textAlign
         
         
         function fontWeight(uielement, weight)
@@ -33,7 +33,7 @@ classdef (Abstract) mlapptools
             
             fontWeightSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
             win.executeJS(fontWeightSetStr);
-        end
+        end % fontWeight
         
         
         function fontColor(uielement, newcolor)
@@ -43,7 +43,7 @@ classdef (Abstract) mlapptools
             
             fontColorSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
             win.executeJS(fontColorSetStr);
-        end
+        end % fontColor
         
         
         function widgetID = setStyle(hControl, styleAttr, styleValue)
@@ -65,7 +65,14 @@ classdef (Abstract) mlapptools
                 ME = mlapptools.checkJavascriptSyntaxError(ME, styleSetStr);
                 rethrow(ME);       
             end
-        end
+            
+            % Assign outputs:
+            if nargout >= 1
+              varargout{1} = widgetID;
+            end
+            
+        end % setStyle
+                
         function [dojoVersion] = aboutDojo()
             if ~numel(matlab.internal.webwindowmanager.instance.findAllWebwindows())
                 f=uifigure; drawnow; tmpWindowCreated = true;              
@@ -89,7 +96,7 @@ classdef (Abstract) mlapptools
         
     methods (Static = true, Access = private)
         function [win] = getWebWindow(uifigurewindow)
-            mlapptools.togglewarnings('off')
+            mlapptools.toggleWarnings('off')
             % Test if uifigurewindow is a valid handle
             if ~isa(uifigurewindow,'matlab.ui.Figure') || ...
                 isempty(struct(uifigurewindow).ControllerInfo)
@@ -113,12 +120,12 @@ classdef (Abstract) mlapptools
                     if strcmp(err.identifier, 'MATLAB:nonExistentField')
                         pause(0.01)
                     else
-                        mlapptools.togglewarnings('on')
+                        mlapptools.toggleWarnings('on')
                         rethrow(err)
                     end
                 end
             end
-            mlapptools.togglewarnings('on')
+            mlapptools.toggleWarnings('on')
             
             if toc >= mlapptools.QUERY_TIMEOUT
                 msgID = 'mlapptools:getWidgetID:QueryTimeout';
@@ -126,14 +133,14 @@ classdef (Abstract) mlapptools
                     'WidgetID query timed out after %u seconds, UI needs more time to load', ...
                     mlapptools.QUERY_TIMEOUT);
             end
-        end
+        end % getWebWindow
             
         
         function [data_tag] = getDataTag(uielement)
-            mlapptools.togglewarnings('off')
+            mlapptools.toggleWarnings('off')
             data_tag = char(struct(uielement).Controller.ProxyView.PeerNode.getId);
-            mlapptools.togglewarnings('on')
-        end
+            mlapptools.toggleWarnings('on')
+        end % getDataTag
         
         
         function [widgetID] = getWidgetID(win, data_tag)
@@ -150,20 +157,20 @@ classdef (Abstract) mlapptools
                             ~isempty(strfind(err.message, 'Cannot read property ''widgetid'' of null'))
                         pause(0.01)
                     else
-                        mlapptools.togglewarnings('on')
+                        mlapptools.toggleWarnings('on')
                         rethrow(err)
                     end
                 end
             end
-            mlapptools.togglewarnings('on')
+            mlapptools.toggleWarnings('on')
             
             if toc >= mlapptools.QUERY_TIMEOUT
                 msgID = 'mlapptools:getWidgetID:QueryTimeout';
                 error(msgID, ...
-                      'WidgetID query timed out after %u seconds, UI needs more time to load', ...
+                      'widgetID query timed out after %u seconds, UI needs more time to load', ...
                       mlapptools.QUERY_TIMEOUT);
             end
-        end
+        end % getWidgetID
         
         
         function [win, widgetID] = getWebElements(uielement)
@@ -175,10 +182,10 @@ classdef (Abstract) mlapptools
             
             % Manipulate the DOM via a JS command
             widgetID = mlapptools.getWidgetID(win, data_tag);
-        end
+        end % getWebElements
         
         
-        function togglewarnings(togglestr)
+        function toggleWarnings(togglestr)
             switch lower(togglestr)
                 case 'on'
                     warning on MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame
@@ -189,10 +196,10 @@ classdef (Abstract) mlapptools
                 otherwise
                     % Do nothing
             end
-        end
+        end % toggleWarnings
         
        
-        function validatealignmentstr(alignment)
+        function validateAlignmentStr(alignment)
             if ~ischar(alignment)
                 msgID = 'mlapptools:alignstring:InvalidInputIype';
                 error(msgID, 'Expected ''%s'', inputs of type ''%s'' not supported', ...
@@ -204,10 +211,10 @@ classdef (Abstract) mlapptools
                 msgID = 'mlapptools:alignstring:InvalidAlignmentString';
                 error(msgID, 'Invalid string alignment specified: ''%s''', alignment);
             end
-        end
+        end % validateAlignmentStr
         
         
-        function [weight] = validatefontweight(weight)
+        function [weight] = validateFontWeight(weight)
             if ischar(weight)
                 weight = lower(weight);
                 validstrs = {'normal', 'bold', 'bolder', 'lighter', 'initial'};
@@ -229,12 +236,12 @@ classdef (Abstract) mlapptools
                 msgID = 'mlapptools:fontWeight:InvalidFontWeight';
                 error(msgID, 'Invalid font weight specified: ''%s''', weight);
             end
-        end
+        end % validateFontWeight
         
         
         function [newcolor] = validateCSScolor(newcolor)
           % TODO
-        end
+        end % validateCSScolor
         
         
         function ME = checkJavascriptSyntaxError(ME,styleSetStr)        

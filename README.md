@@ -1,7 +1,7 @@
 # mlapptools
-`mlapptools` is an example set of static MATLAB methods for manipulating the DOM underlying the App Designer UI elements formally introduced in R2016a
+`mlapptools` is an example set of static MATLAB methods for manipulating the DOM underlying the App Designer UI elements formally introduced in R2016a.
 
-For additional information, see Iliya Romm's guest Undocumented Matlab article, [*Customizing uifigures part 2*](http://undocumentedmatlab.com/blog/customizing-uifigures-part-2), published Wednesday, September 7th, 2016
+For additional information, see Iliya Romm's Undocumented Matlab guest article, [*Customizing uifigures part 2*](http://undocumentedmatlab.com/blog/customizing-uifigures-part-2), published Wednesday, September 7th, 2016.
 
 ## Methods
 [`textAlign`](#textAlign) - Modify text alignment  
