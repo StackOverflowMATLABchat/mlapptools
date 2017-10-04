@@ -16,6 +16,7 @@ classdef (Abstract) mlapptools
             
     methods (Access = public, Static = true)
         function textAlign(uielement, alignment)
+        % A method for manipulating text alignment.
             alignment = lower(alignment);
             mlapptools.validateAlignmentStr(alignment)
             
@@ -27,6 +28,8 @@ classdef (Abstract) mlapptools
         
         
         function fontWeight(uielement, weight)
+        % A method for manipulating font weight, which controls how thick or 
+        % thin characters in text should be displayed.
             weight = mlapptools.validatefontweight(weight);
             
             [win, widgetID] = mlapptools.getWebElements(uielement);
@@ -37,6 +40,7 @@ classdef (Abstract) mlapptools
         
         
         function fontColor(uielement, newcolor)
+        % A method for manipulating text color.
             newcolor = mlapptools.validateCSScolor(newcolor);
 
             [win, widgetID] = mlapptools.getWebElements(uielement);
@@ -45,16 +49,36 @@ classdef (Abstract) mlapptools
             win.executeJS(fontColorSetStr);
         end % fontColor
         
+        function varargout = setStyle(varargin)
+        % A method providing an interface for modifying style attributes of uicontrols. 
+        %
+        % WARNING: Due to the large amount of available style attributes and 
+        % corresponding settings, input checking is not performed. As this
+        % might lead to unexpected results or errors - USE AT YOUR OWN RISK!
+        %
+        % "Overloads":
+        % 3-parameter call: 
+        %   widgetID = setStyle(hControl, styleAttr, styleValue)
+        % 4-parameter call: 
+        %              setStyle(hUIFig,   styleAttr, styleValue, widgetID)
         
-        function widgetID = setStyle(hControl, styleAttr, styleValue)
-            % This method provides a simple interface for modifying style attributes
-            % of uicontrols.
-            %
-            % WARNING: Due to the large amount of available style attributes and 
-            % corresponding settings, input checking is not performed. As this
-            % might lead to unexpected results or errors - USE AT YOUR OWN RISK!
-            [win, widgetID] = mlapptools.getWebElements(hControl);
+            % Unpack inputs:
+            styleAttr = varargin{2};
+            styleValue = varargin{3};
             
+            switch nargin
+              case 3
+                hControl = varargin{1};
+                % Get a handle to the webwindow
+                [win, widgetID] = mlapptools.getWebElements(hControl);
+              case 4                
+                hUIFig = varargin{1};
+                widgetID = varargin{4};
+
+                % Get a handle to the webwindow  
+                win = mlapptools.getWebWindow(hUIFig);
+            end
+                               
             styleSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "%s", "%s")', widgetID, styleAttr, styleValue);
             % ^ this might result in junk if widgetId=='null'.
             try 
@@ -74,6 +98,8 @@ classdef (Abstract) mlapptools
         end % setStyle
                 
         function [dojoVersion] = aboutDojo()
+        % A method for getting version info about the Dojo Toolkit version visible by MATLAB.
+        
             if ~numel(matlab.internal.webwindowmanager.instance.findAllWebwindows())
                 f=uifigure; drawnow; tmpWindowCreated = true;              
             else
