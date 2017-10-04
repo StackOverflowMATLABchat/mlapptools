@@ -118,6 +118,32 @@ classdef (Abstract) mlapptools
             end
         end % aboutDojo
         
+        function [fullHTML] = getHTML(hUIFig)
+        % A method for dumping the HTML code of a uifigure. 
+        % Intended for R2017b (and onward?) where the CEF url cannot be simply opened in a browser.
+                
+            win = mlapptools.getWebWindow(hUIFig);            
+            % Get the outer html:
+            fullHTML = win.executeJS('document.documentElement.outerHTML');
+            % Replace some strings for conversion to work well:
+            fullHTML = strrep(fullHTML,'%','%%');
+            fullHTML = strrep(fullHTML,'><','>\n<');
+            % Append the DOCTYPE header and remove quotes:
+            fullHTML = sprintf(['<!DOCTYPE HTML>\n' fullHTML(2:end-1)]);
+            
+        %% Optional things to do with the output:
+        % Display as web page:
+        %{
+            web(['text://' fullHTML]);
+        %}
+        % Save as file:
+        %{
+           fid = fopen('uifig_raw.html','w');
+           fprintf(fid,'%s',fullHTML);
+           fclose(fid);
+        %}        
+        end % getHTML    
+
     end % Public Static Methods
         
     methods (Static = true, Access = private)
