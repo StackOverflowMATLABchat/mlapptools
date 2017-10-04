@@ -144,6 +144,54 @@ classdef (Abstract) mlapptools
         %}        
         end % getHTML    
 
+        function varargout = getWidgetInfo(hUIFig,verbose)
+          % A method for gathering information about dijit widgets.
+          
+          %% Handle missing inputs:
+          if nargin < 1 || isempty(hUIFig)
+            throw(MException('getWidgetInfo:noHandleProvided',...
+              'Please provide a valid UIFigure handle as a first input.'));
+          end
+          if nargin < 2 || isempty(verbose)
+            verbose = false;
+          end
+          %% 
+          win = mlapptools.getWebWindow(hUIFig);  
+          %% Extract widgets from dijit registry:
+          n = str2double(win.executeJS(['var W; require(["dijit/registry"], '...
+            ' function(registry){W = registry.toArray();}); W.length;']));
+          widgets = cell(n,1);
+          for ind1 = 1:n
+            try
+              widgets{ind1} = jsondecode(win.executeJS(sprintf('W[%d]', ind1)));
+            catch % handle circular references:
+              if verbose
+                disp(['Node #' num2str(ind1-1) ' with id ' win.executeJS(sprintf('W[%d].id', ind1-1))...
+                  ' could not be fully converted. Attempting fallback...']);
+              end
+              props = jsondecode(win.executeJS(sprintf('Object.keys(W[%d])', ind1-1)));
+              tmp = mlapptools.emptyStructWithFields(props);
+              validProps = fieldnames(tmp);
+              for indP = 1:numel(tmp)
+                try
+                  tmp.(validProps(indP)) = jsondecode(win.executeJS(sprintf(['W[%d].' props{ind1}], ind1-1)));
+                catch
+                  % Fallback could be executed recursively for all problematic field 
+                  % (to keep the most data), but for now do nothing.
+                end
+              end
+              widgets{ind1} = tmp;
+              clear props validProps tmp
+            end
+          end
+          varargout{1} = widgets;
+          if nargout == 2
+            % Convert to a single table:
+            varargout{2} = struct2table(mlapptools.unifyStructs(widgets));
+          end % getWidgetInfo
+        
+        end 
+        
     end % Public Static Methods
         
     methods (Static = true, Access = private)
@@ -306,6 +354,36 @@ classdef (Abstract) mlapptools
                   ME = addCause(ME,causeException);
                 end
             end
-        end
-    end
-end
+        end % checkJavascriptSyntaxError
+        
+        
+        function eStruct = emptyStructWithFields(fields)
+        % A convenience method for creating an empty scalar struct with specific field
+        % names.
+        % INPUTS:
+        % fields - cell array of strings representing the required fieldnames.
+        
+            tmp = [ matlab.lang.makeValidName(fields(:)), cell(numel(fields),1)].';
+            eStruct = struct(tmp{:});
+        
+        end % emptyStructWithFields
+        
+        
+        function uStruct = unifyStructs(cellOfStructs)
+        % A method for merging structs having *some* overlapping field names.
+        
+            fields = cellfun(@fieldnames, cellOfStructs, 'UniformOutput', false);
+            uFields = unique(vertcat(fields{:}));
+            sz = numel(cellOfStructs);
+            uStruct = repmat(mlapptools.emptyStructWithFields(uFields),sz,1);
+            for ind1 = 1:sz
+              fields = fieldnames(cellOfStructs{ind1});
+              for ind2 = 1:numel(fields)
+                uStruct(ind1).(fields{ind2}) = cellOfStructs{ind1}.(fields{ind2});
+              end              
+            end
+        end % unifyStructs
+        
+    end % Private Static Methods
+    
+end % classdef
