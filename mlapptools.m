@@ -8,6 +8,7 @@ classdef (Abstract) mlapptools
     % fontColor  - utility method for modifying font color.
     % setStyle   - utility method for modifying styles that do not (yet) have a
     %              dedicated mutator.
+    % aboutDojo  - returns version information about the Dojo toolkit.
     
     properties (Access = private, Constant = true)
         QUERY_TIMEOUT = 5;  % Dojo query timeout period, seconds
@@ -65,8 +66,26 @@ classdef (Abstract) mlapptools
                 rethrow(ME);       
             end
         end
+        function [dojoVersion] = aboutDojo()
+            if ~numel(matlab.internal.webwindowmanager.instance.findAllWebwindows())
+                f=uifigure; drawnow; tmpWindowCreated = true;              
+            else
+                tmpWindowCreated = false;
+            end
 
-    end % Public static methods
+            dojoVersion = matlab.internal.webwindowmanager.instance ...
+                                .windowList(1).executeJS('dojo.version');
+
+            if tmpWindowCreated
+                delete(f);
+            end
+            % If MATLAB is sufficiently new, convert the JSON to a struct:  
+            if str2double(subsref(ver('matlab'), substruct('.','Version'))) >= 9.1 %R2016b
+                dojoVersion = jsondecode(dojoVersion);
+            end
+        end % aboutDojo
+        
+    end % Public Static Methods
         
     methods (Static = true, Access = private)
         function [win] = getWebWindow(uifigurewindow)

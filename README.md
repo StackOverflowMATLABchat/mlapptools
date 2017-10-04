@@ -8,6 +8,7 @@ For additional information, see Iliya Romm's guest Undocumented Matlab article, 
 [`fontWeight`](#fontWeight) - Modify font weight  
 [`fontColor`](#fontColor) - Modify font folor  
 [`setStyle`](#setStyle) - Modify a specified style property
+`aboutDojo` - Return version information about the Dojo toolkit.
 
 <a name="textAlign"></a>
 #### *mlapptools*.**textAlign**(*uielement*, *alignment*)
