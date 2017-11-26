@@ -97,8 +97,9 @@ classdef (Abstract) mlapptools
               'mlapptools:getWebWindow:NotUIFigure',...
               'The provided window handle is not of a UIFigure.');
             
+            to = mlapptools.getTimeout(hUIFig);
             tic
-            while true && (toc < mlapptools.QUERY_TIMEOUT)
+            while true && (toc < to)
                 try
                     hController = struct(struct(hUIFig).Controller);
                     % Check for Controller version:
@@ -120,15 +121,15 @@ classdef (Abstract) mlapptools
             end
             mlapptools.toggleWarnings('on')
             
-            if toc >= mlapptools.QUERY_TIMEOUT
+            if toc >= to
                 msgID = 'mlapptools:getWidgetID:QueryTimeout';
                 error(msgID, ...
                     'WidgetID query timed out after %u seconds, UI needs more time to load', ...
-                    mlapptools.QUERY_TIMEOUT);
+                    to);
             end
         end % getWebWindow
         
-        function varargout = getWidgetInfo(hUIFig,verbose)
+        function varargout = getWidgetInfo(hUIFig, verboseFlag)
           % A method for gathering information about dijit widgets.
           
           %% Handle missing inputs:
@@ -136,8 +137,8 @@ classdef (Abstract) mlapptools
             throw(MException('getWidgetInfo:noHandleProvided',...
               'Please provide a valid UIFigure handle as a first input.'));
           end
-          if nargin < 2 || isempty(verbose)
-            verbose = false;
+          if nargin < 2 || isempty(verboseFlag)
+            verboseFlag = false;
           end
           %% 
           win = mlapptools.getWebWindow(hUIFig);  
@@ -149,7 +150,7 @@ classdef (Abstract) mlapptools
             try
               widgets{ind1} = jsondecode(win.executeJS(sprintf('W[%d]', ind1)));
             catch % handle circular references:
-              if verbose
+              if verboseFlag
                 disp(['Node #' num2str(ind1-1) ' with id ' win.executeJS(sprintf('W[%d].id', ind1-1))...
                   ' could not be fully converted. Attempting fallback...']);
               end
@@ -223,6 +224,11 @@ classdef (Abstract) mlapptools
             end
             
         end % setStyle
+        
+        function setTimeout(hUIFig, newTimeoutInSec)
+          % Sets a custom timeout for dojo queries, specified in [s].
+          setappdata(hUIFig, 'QUERY_TIMEOUT', newTimeoutInSec);
+        end
                 
         function textAlign(uiElement, alignment)
         % A method for manipulating text alignment.
@@ -271,8 +277,9 @@ classdef (Abstract) mlapptools
         function [widgetID] = getWidgetID(win, data_tag)
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
             
+            to = mlapptools.getTimeout(mlapptools.figFromWebwindow(win));
             tic
-            while true && (toc < mlapptools.QUERY_TIMEOUT)
+            while true && (toc < to)
                 try
                     widgetID = win.executeJS(widgetquerystr);
                     widgetID = widgetID(2:end-1);
@@ -289,13 +296,18 @@ classdef (Abstract) mlapptools
             end
             mlapptools.toggleWarnings('on')
             
-            if toc >= mlapptools.QUERY_TIMEOUT
+            if toc >= to
                 msgID = 'mlapptools:getWidgetID:QueryTimeout';
                 error(msgID, ...
                       'widgetID query timed out after %u seconds, UI needs more time to load', ...
-                      mlapptools.QUERY_TIMEOUT);
+                      to);
             end
         end % getWidgetID
+        
+        function to = getTimeout(hFig)
+            to = getappdata(hFig,'QUERY_TIMEOUT');
+            if isempty(to), to = mlapptools.QUERY_TIMEOUT; end
+        end
         
         function tf = isUIFigure(hList)
             tf = arrayfun(@(x)isa(x,'matlab.ui.Figure') && ...
@@ -371,6 +383,15 @@ classdef (Abstract) mlapptools
                 error(msgID, 'Invalid font weight specified: ''%s''', weight);
             end
         end % validateFontWeight
+        
+        function hFig = figFromWebwindow(hWebwindow)
+          hFigs = findall(groot, 'Type', 'figure');
+          mlapptools.toggleWarnings('off');
+          hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
+          ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
+          mlapptools.toggleWarnings('on');
+          hFig = hFigs(hWebwindow == ww);          
+        end
                         
     end % Private Static Methods
     
