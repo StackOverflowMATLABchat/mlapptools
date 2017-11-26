@@ -33,22 +33,22 @@ classdef (Abstract) mlapptools
             end
         end % aboutDojo
                  
-        function fontColor(uielement, newcolor)
+        function fontColor(uiElement, newcolor)
         % A method for manipulating text color.
             newcolor = mlapptools.validateCSScolor(newcolor);
 
-            [win, widgetID] = mlapptools.getWebElements(uielement);
+            [win, widgetID] = mlapptools.getWebElements(uiElement);
             
             fontColorSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
             win.executeJS(fontColorSetStr);
         end % fontColor
                 
-        function fontWeight(uielement, weight)
+        function fontWeight(uiElement, weight)
         % A method for manipulating font weight, which controls how thick or 
         % thin characters in text should be displayed.
-            weight = mlapptools.validatefontweight(weight);
+            weight = mlapptools.validateFontWeight(weight);
             
-            [win, widgetID] = mlapptools.getWebElements(uielement);
+            [win, widgetID] = mlapptools.getWebElements(uiElement);
             
             fontWeightSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
             win.executeJS(fontWeightSetStr);
@@ -79,6 +79,54 @@ classdef (Abstract) mlapptools
            fclose(fid);
         %}        
         end % getHTML    
+        
+        function [win, widgetID] = getWebElements(uiElement)
+        % A method for obtaining the webwindow handle and the widgetID corresponding 
+        % to the provided uifigure control.
+            % Get a handle to the webwindow
+            win = mlapptools.getWebWindow(uiElement.Parent);
+            
+            % Find which element of the DOM we want to edit
+            widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
+        end % getWebElements        
+        
+        function [win] = getWebWindow(hUIFig)
+            mlapptools.toggleWarnings('off')
+            % Make sure we got a valid handle
+            assert(mlapptools.isUIFigure(hUIFig),...
+              'mlapptools:getWebWindow:NotUIFigure',...
+              'The provided window handle is not of a UIFigure.');
+            
+            tic
+            while true && (toc < mlapptools.QUERY_TIMEOUT)
+                try
+                    hController = struct(struct(hUIFig).Controller);
+                    % Check for Controller version:
+                    switch subsref(ver('matlab'), substruct('.','Version'))
+                      case {'9.0','9.1'} % R2016a or R2016b
+                        win = hController.Container.CEF;
+                      otherwise  % R2017a onward
+                        win = struct(hController.PlatformHost).CEF;
+                    end
+                    break
+                catch err
+                    if strcmp(err.identifier, 'MATLAB:nonExistentField')
+                        pause(0.01)
+                    else
+                        mlapptools.toggleWarnings('on')
+                        rethrow(err)
+                    end
+                end
+            end
+            mlapptools.toggleWarnings('on')
+            
+            if toc >= mlapptools.QUERY_TIMEOUT
+                msgID = 'mlapptools:getWidgetID:QueryTimeout';
+                error(msgID, ...
+                    'WidgetID query timed out after %u seconds, UI needs more time to load', ...
+                    mlapptools.QUERY_TIMEOUT);
+            end
+        end % getWebWindow
         
         function varargout = getWidgetInfo(hUIFig,verbose)
           % A method for gathering information about dijit widgets.
@@ -176,12 +224,12 @@ classdef (Abstract) mlapptools
             
         end % setStyle
                 
-        function textAlign(uielement, alignment)
+        function textAlign(uiElement, alignment)
         % A method for manipulating text alignment.
             alignment = lower(alignment);
             mlapptools.validateAlignmentStr(alignment)
             
-            [win, widgetID] = mlapptools.getWebElements(uielement);
+            [win, widgetID] = mlapptools.getWebElements(uiElement);
             
             alignSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
             win.executeJS(alignSetStr);
@@ -214,63 +262,12 @@ classdef (Abstract) mlapptools
         
         end % emptyStructWithFields
                 
-        function [data_tag] = getDataTag(uielement)
+        function [data_tag] = getDataTag(uiElement)
             mlapptools.toggleWarnings('off')
-            data_tag = char(struct(uielement).Controller.ProxyView.PeerNode.getId);
+            data_tag = char(struct(uiElement).Controller.ProxyView.PeerNode.getId);
             mlapptools.toggleWarnings('on')
         end % getDataTag        
-        
-        function [win, widgetID] = getWebElements(uielement)
-            % Get a handle to the webwindow
-            win = mlapptools.getWebWindow(uielement.Parent);
-            
-            % Find which element of the DOM we want to edit
-            data_tag = mlapptools.getDataTag(uielement);
-            
-            % Manipulate the DOM via a JS command
-            widgetID = mlapptools.getWidgetID(win, data_tag);
-        end % getWebElements        
-        
-        function [win] = getWebWindow(uifigurewindow)
-            mlapptools.toggleWarnings('off')
-            % Test if uifigurewindow is a valid handle
-            if ~isa(uifigurewindow,'matlab.ui.Figure') || ...
-                isempty(struct(uifigurewindow).ControllerInfo)
-                msgID = 'mlapptools:getWebWindow:NotUIFigure';
-                error(msgID, 'The provided window handle is not of a UIFigure.');
-            end
-            
-            tic
-            while true && (toc < mlapptools.QUERY_TIMEOUT)
-                try
-                    hController = struct(struct(uifigurewindow).Controller);
-                    % Check for Controller version:
-                    switch subsref(ver('matlab'), substruct('.','Version'))
-                      case {'9.0','9.1'} % R2016a or R2016b
-                        win = hController.Container.CEF;
-                      otherwise  % R2017a onward
-                        win = struct(hController.PlatformHost).CEF;
-                    end
-                    break
-                catch err
-                    if strcmp(err.identifier, 'MATLAB:nonExistentField')
-                        pause(0.01)
-                    else
-                        mlapptools.toggleWarnings('on')
-                        rethrow(err)
-                    end
-                end
-            end
-            mlapptools.toggleWarnings('on')
-            
-            if toc >= mlapptools.QUERY_TIMEOUT
-                msgID = 'mlapptools:getWidgetID:QueryTimeout';
-                error(msgID, ...
-                    'WidgetID query timed out after %u seconds, UI needs more time to load', ...
-                    mlapptools.QUERY_TIMEOUT);
-            end
-        end % getWebWindow
-                                    
+                                            
         function [widgetID] = getWidgetID(win, data_tag)
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
             
@@ -299,7 +296,12 @@ classdef (Abstract) mlapptools
                       mlapptools.QUERY_TIMEOUT);
             end
         end % getWidgetID
-                                
+        
+        function tf = isUIFigure(hList)
+            tf = arrayfun(@(x)isa(x,'matlab.ui.Figure') && ...
+                              isstruct(struct(x).ControllerInfo), hList);
+        end
+                                            
         function toggleWarnings(togglestr)
             switch lower(togglestr)
                 case 'on'
