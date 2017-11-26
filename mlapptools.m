@@ -1,14 +1,10 @@
 classdef (Abstract) mlapptools
-    % MLAPPTOOLS A collection of static methods for customizing various aspects
-    % MATLAB App Designer UIFigures.
+    % MLAPPTOOLS is a collection of static methods for customizing the 
+    % R2016a-introduced web-based uifigure windows and associated UI elements 
+    % through DOM manipulations.
     %
-    % MLAPPTOOLS methods:
-    % textAlign  - utility method for modifying text alignment.
-    % fontWeight - utility method for modifying font weight (bold etc.).
-    % fontColor  - utility method for modifying font color.
-    % setStyle   - utility method for modifying styles that do not (yet) have a
-    %              dedicated mutator.
-    % aboutDojo  - returns version information about the Dojo toolkit.
+    % See README.md for detailed documentation and examples.
+    
     
     properties (Access = private, Constant = true)
         QUERY_TIMEOUT = 5;  % Dojo query timeout period, seconds
