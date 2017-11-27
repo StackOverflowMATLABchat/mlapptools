@@ -20,3 +20,6 @@ slprj/
 
 # MATLAB figure files
 *.fig
+
+# Custom filters
+TMP*.m
