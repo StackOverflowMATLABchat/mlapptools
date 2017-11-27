@@ -91,7 +91,7 @@ classdef (Abstract) mlapptools
         end % getWebElements        
         
         function [win] = getWebWindow(hUIFig)
-            mlapptools.toggleWarnings('off')
+            warnState = mlapptools.toggleWarnings('off');
             % Make sure we got a valid handle
             assert(mlapptools.isUIFigure(hUIFig),...
               'mlapptools:getWebWindow:NotUIFigure',...
@@ -114,12 +114,12 @@ classdef (Abstract) mlapptools
                     if strcmp(err.identifier, 'MATLAB:nonExistentField')
                         pause(0.01)
                     else
-                        mlapptools.toggleWarnings('on')
+                        warning(warnState); % Restore warning state
                         rethrow(err)
                     end
                 end
             end
-            mlapptools.toggleWarnings('on')
+            warning(warnState); % Restore warning state
             
             if toc >= to
                 msgID = 'mlapptools:getWidgetID:QueryTimeout';
@@ -127,6 +127,7 @@ classdef (Abstract) mlapptools
                     'WidgetID query timed out after %u seconds, UI needs more time to load', ...
                     to);
             end
+            
         end % getWebWindow
         
         function varargout = getWidgetInfo(hUIFig, verboseFlag)
@@ -269,9 +270,9 @@ classdef (Abstract) mlapptools
         end % emptyStructWithFields
                 
         function [data_tag] = getDataTag(uiElement)
-            mlapptools.toggleWarnings('off')
+            warnState = mlapptools.toggleWarnings('off');
             data_tag = char(struct(uiElement).Controller.ProxyView.PeerNode.getId);
-            mlapptools.toggleWarnings('on')
+            warning(warnState);
         end % getDataTag        
                                             
         function [widgetID] = getWidgetID(win, data_tag)
@@ -286,15 +287,13 @@ classdef (Abstract) mlapptools
                     break
                 catch err
                     if ~isempty(strfind(err.message, 'JavaScript error: Uncaught ReferenceError: dojo is not defined')) || ...
-                            ~isempty(strfind(err.message, 'Cannot read property ''widgetid'' of null'))
+                       ~isempty(strfind(err.message, 'Cannot read property ''widgetid'' of null'))
                         pause(0.01)
                     else
-                        mlapptools.toggleWarnings('on')
                         rethrow(err)
                     end
                 end
             end
-            mlapptools.toggleWarnings('on')
             
             if toc >= to
                 msgID = 'mlapptools:getWidgetID:QueryTimeout';
@@ -314,14 +313,19 @@ classdef (Abstract) mlapptools
                               isstruct(struct(x).ControllerInfo), hList);
         end
                                             
-        function toggleWarnings(togglestr)
+        function oldState = toggleWarnings(togglestr)
+            OJF = 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame';
+            SOO = 'MATLAB:structOnObject';
+            if nargout > 0
+                oldState = [warning('query',OJF); warning('query',SOO)];
+            end
             switch lower(togglestr)
                 case 'on'
-                    warning on MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame
-                    warning on MATLAB:structOnObject
+                    warning('on',OJF);
+                    warning('on',SOO);
                 case 'off'
-                    warning off MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame
-                    warning off MATLAB:structOnObject
+                    warning('off',OJF);
+                    warning('off',SOO);
                 otherwise
                     % Do nothing
             end
@@ -385,11 +389,12 @@ classdef (Abstract) mlapptools
         end % validateFontWeight
         
         function hFig = figFromWebwindow(hWebwindow)
+          % Using this method is discouraged.
           hFigs = findall(groot, 'Type', 'figure');
-          mlapptools.toggleWarnings('off');
+          warnState = mlapptools.toggleWarnings('off'); 
           hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
           ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
-          mlapptools.toggleWarnings('on');
+          warning(warnState); % Restore warning state
           hFig = hFigs(hWebwindow == ww);          
         end
                         
