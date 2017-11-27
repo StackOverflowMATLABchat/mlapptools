@@ -3,6 +3,20 @@ classdef (Abstract) mlapptools
     % R2016a-introduced web-based uifigure windows and associated UI elements 
     % through DOM manipulations.
     %
+    % MLAPPTOOLS' public methods:
+    %
+    % aboutDojo      - Return the dojo toolkit version.
+    % fontColor      - Modify font color.
+    % fontWeight     - Modify font weight.
+    % getHTML        - Return the full HTML code of a uifigure.
+    % getWebElements - Extract a webwindow handle and a widget ID from a uifigure control handle.
+    % getWebWindow   - Extract a webwindow handle from a uifigure handle.
+    % getWidgetInfo  - Gather information about a specific dijit widget.
+    % getWidgetList  - Gather information about all dijit widget in a specified uifigure.
+    % setStyle       - Modify a specified style property.
+    % setTimeout     - Override the default timeout for dojo commands, for a specific uifigure.
+    % textAlign      - Modify text alignment.
+    %
     % See README.md for detailed documentation and examples.
     
     
