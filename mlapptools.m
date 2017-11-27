@@ -130,46 +130,56 @@ classdef (Abstract) mlapptools
             
         end % getWebWindow
         
-        function varargout = getWidgetInfo(hUIFig, verboseFlag)
-          % A method for gathering information about dijit widgets.
-          
-          %% Handle missing inputs:
-          if nargin < 1 || isempty(hUIFig)
-            throw(MException('getWidgetInfo:noHandleProvided',...
+        function [nfo] = getWidgetInfo(win, widgetID, verboseFlag)
+        % A method for gathering information about a specific dijit widget.
+            %% Handling required positional inputs:
+            assert(nargin >= 2,'mlapptools:getWidgetInfo:insufficientInputs',...
+              'getWidgetInfo must be called with at least 2 inputs.');
+            %% Handling optional inputs:
+            if nargin < 3 || isempty(verboseFlag)
+              verboseFlag = false;
+            end
+            %% Querying dijit
+            win.executeJS(['var W; require(["dijit/registry"], '...
+                 'function(registry){W = registry.byId("' widgetID '");}); W = [W];']);          
+            % Decoding
+            try
+              nfo = mlapptools.decodeDijitRegistryResult(win,verboseFlag);
+            catch ME
+              switch ME.identifier
+                case 'mlapptools:decodeDijitRegistryResult:noSuchWidget'
+                  warning(ME.identifier, '%s', ME.message);
+                otherwise
+                  warning('mlapptools:getWidgetInfo:unknownDecodingError',...
+                    'Decoding failed for an unexpected reason: %s', ME.message);
+              end
+              nfo = [];
+            end
+            % "Clear" the temporary JS variable
+            win.executeJS('W = undefined');
+        end % getWidgetInfo
+        
+        function varargout = getWidgetList(hUIFig, verboseFlag)
+        % A method for listing all dijit widgets in a uifigure.  
+          warnState = mlapptools.toggleWarnings('off');
+          %% Handle missing inputs:          
+          if nargin < 1 || isempty(hUIFig) || ~mlapptools.isUIFigure(hUIFig)
+            throw(MException('mlapptools:getWidgetList:noHandleProvided',...
               'Please provide a valid UIFigure handle as a first input.'));
           end
+          warning(warnState); % Restore warning state
           if nargin < 2 || isempty(verboseFlag)
             verboseFlag = false;
           end
-          %% 
+          %% Process uifigure:
           win = mlapptools.getWebWindow(hUIFig);  
-          %% Extract widgets from dijit registry:
-          n = str2double(win.executeJS(['var W; require(["dijit/registry"], '...
-            ' function(registry){W = registry.toArray();}); W.length;']));
-          widgets = cell(n,1);
-          for ind1 = 1:n
-            try
-              widgets{ind1} = jsondecode(win.executeJS(sprintf('W[%d]', ind1)));
-            catch % handle circular references:
-              if verboseFlag
-                disp(['Node #' num2str(ind1-1) ' with id ' win.executeJS(sprintf('W[%d].id', ind1-1))...
-                  ' could not be fully converted. Attempting fallback...']);
-              end
-              props = jsondecode(win.executeJS(sprintf('Object.keys(W[%d])', ind1-1)));
-              tmp = mlapptools.emptyStructWithFields(props);
-              validProps = fieldnames(tmp);
-              for indP = 1:numel(tmp)
-                try
-                  tmp.(validProps(indP)) = jsondecode(win.executeJS(sprintf(['W[%d].' props{ind1}], ind1-1)));
-                catch
-                  % Fallback could be executed recursively for all problematic field 
-                  % (to keep the most data), but for now do nothing.
-                end
-              end
-              widgets{ind1} = tmp;
-              clear props validProps tmp
-            end
-          end
+          % Extract widgets from dijit registry:
+          win.executeJS(['var W; require(["dijit/registry"], '...
+            ' function(registry){W = registry.toArray();});']); 
+          widgets = mlapptools.decodeDijitRegistryResult(win, verboseFlag);
+          % "Clear" the temporary JS variable
+          win.executeJS('W = undefined');
+          %% Assign outputs: 
           varargout{1} = widgets;
           if nargout == 2
             % Convert to a single table:
@@ -258,6 +268,41 @@ classdef (Abstract) mlapptools
             end
         end % checkJavascriptSyntaxError
                 
+        function widgets = decodeDijitRegistryResult(win, verboseFlag)          
+          assert(jsondecode(win.executeJS(...
+            'this.hasOwnProperty("W") && W !== undefined && W instanceof Array && W.length > 0')),...
+            'mlapptools:decodeDijitRegistryResult:noSuchWidget',...
+            'The dijit registry doesn''t contain the specified widgetID.');
+          
+          % Now that we know that W exists, let's try to decode it.
+          n = str2double(win.executeJS('W.length;'));
+          widgets = cell(n,1);
+          % Get the JSON representing the widget, then try to decode, while catching circular references
+          for ind1 = 1:n
+            try
+              widgets{ind1} = jsondecode(win.executeJS(sprintf('W[%d]', ind1-1)));
+            catch % handle circular references:
+              if verboseFlag
+                disp(['Node #' num2str(ind1-1) ' with id ' win.executeJS(sprintf('W[%d].id', ind1-1))...
+                  ' could not be fully converted. Attempting fallback...']);
+              end
+              props = jsondecode(win.executeJS(sprintf('Object.keys(W[%d])', ind1-1)));
+              tmp = mlapptools.emptyStructWithFields(props);
+              validProps = fieldnames(tmp);
+              for indP = 1:numel(tmp)
+                try
+                  tmp.(validProps(indP)) = jsondecode(win.executeJS(sprintf(['W[%d].' props{ind1}], ind1-1)));
+                catch
+                  % Fallback could be executed recursively for all problematic field 
+                  % (to keep the most data), but for now do nothing.
+                end
+              end
+              widgets{ind1} = tmp;
+              clear props validProps tmp
+            end
+          end
+        end % decodeDijitRegistryResult
+        
         function eStruct = emptyStructWithFields(fields)
         % A convenience method for creating an empty scalar struct with specific field
         % names.
@@ -306,12 +351,12 @@ classdef (Abstract) mlapptools
         function to = getTimeout(hFig)
             to = getappdata(hFig,'QUERY_TIMEOUT');
             if isempty(to), to = mlapptools.QUERY_TIMEOUT; end
-        end
+        end % getTimeout
         
         function tf = isUIFigure(hList)
             tf = arrayfun(@(x)isa(x,'matlab.ui.Figure') && ...
                               isstruct(struct(x).ControllerInfo), hList);
-        end
+        end % isUIFigure
                                             
         function oldState = toggleWarnings(togglestr)
             OJF = 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame';
@@ -396,7 +441,7 @@ classdef (Abstract) mlapptools
           ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
           warning(warnState); % Restore warning state
           hFig = hFigs(hWebwindow == ww);          
-        end
+        end % figFromWebwindow
                         
     end % Private Static Methods
     
