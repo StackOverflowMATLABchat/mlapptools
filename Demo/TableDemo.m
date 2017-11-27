@@ -12,7 +12,7 @@ classdef TableDemo < matlab.apps.AppBase
         % Button pushed function: Button
         function ButtonPushed(app, ~)
           % Return all registered widgets:  
-          [~,w] = mlapptools.getWidgetInfo(app.UIFigure);
+          [~,w] = mlapptools.getWidgetList(app.UIFigure);
           % Filter list:
           w = w(~cellfun(@isempty,w.id) & ...
                  cellfun(@(x)~isempty(strfind(x,'uniq')),w.id),:); %#ok<STREMP>
