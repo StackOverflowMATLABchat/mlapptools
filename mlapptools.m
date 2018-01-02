@@ -303,9 +303,9 @@ classdef (Abstract) mlapptools
               props = jsondecode(win.executeJS(sprintf('Object.keys(W[%d])', ind1-1)));
               tmp = mlapptools.emptyStructWithFields(props);
               validProps = fieldnames(tmp);
-              for indP = 1:numel(tmp)
+              for indP = 1:numel(validProps)
                 try
-                  tmp.(validProps(indP)) = jsondecode(win.executeJS(sprintf(['W[%d].' props{ind1}], ind1-1)));
+                  tmp.(validProps{indP}) = jsondecode(win.executeJS(sprintf(['W[%d].' props{indP}], ind1-1)));
                 catch
                   % Fallback could be executed recursively for all problematic field 
                   % (to keep the most data), but for now do nothing.
