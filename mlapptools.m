@@ -340,6 +340,7 @@ classdef (Abstract) mlapptools
           hFigs = findall(groot, 'Type', 'figure');
           warnState = mlapptools.toggleWarnings('off'); 
           hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
+          hUIFigs = hUIFigs(strcmp({hUIFigs.Visible},'on')); % Hidden figures are ignored
           ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
           warning(warnState); % Restore warning state
           hFig = hFigs(hWebwindow == ww);          
@@ -348,12 +349,12 @@ classdef (Abstract) mlapptools
         function [widgetID] = getWidgetID(win, data_tag)
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
             hFig = mlapptools.figFromWebwindow(win);
-            mlapptools.waitTillFigureLoaded(win, hFig);
+            mlapptools.waitTillFigureLoaded(hFig);
             try % should work for most UI objects
               widgetID = win.executeJS(widgetquerystr);
               widgetID = widgetID(2:end-1);
             catch % fallback for problematic objects
-              warning('Problematic control encountered with no fallback implemented yet. Please ')
+              warning('Problematic control encountered with no fallback implemented yet.')
               % TODO
             end
         end % getWidgetID
