@@ -333,7 +333,20 @@ classdef (Abstract) mlapptools
             data_tag = char(struct(uiElement).Controller.ProxyView.PeerNode.getId);
             warning(warnState);
         end % getDataTag        
-                                            
+
+        function hFig = figFromWebwindow(hWebwindow)
+          % Using this method is discouraged as it's relatively computation-intensive.
+          % Since the figure handle is not a property of the webwindow or its children 
+          %   (to our best knowledge), we must list all figures and check which of them
+          %   is associated with the input webwindow.
+          hFigs = findall(groot, 'Type', 'figure');
+          warnState = mlapptools.toggleWarnings('off'); 
+          hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
+          ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
+          warning(warnState); % Restore warning state
+          hFig = hFigs(hWebwindow == ww);          
+        end % figFromWebwindow
+        
         function [widgetID] = getWidgetID(win, data_tag)
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
             
@@ -447,15 +460,6 @@ classdef (Abstract) mlapptools
             end
         end % validateFontWeight
         
-        function hFig = figFromWebwindow(hWebwindow)
-          % Using this method is discouraged.
-          hFigs = findall(groot, 'Type', 'figure');
-          warnState = mlapptools.toggleWarnings('off'); 
-          hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
-          ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
-          warning(warnState); % Restore warning state
-          hFig = hFigs(hWebwindow == ww);          
-        end % figFromWebwindow
                         
     end % Private Static Methods
     
