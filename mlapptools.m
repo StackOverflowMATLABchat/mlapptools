@@ -22,6 +22,7 @@ classdef (Abstract) mlapptools
     
     properties (Access = private, Constant = true)
         QUERY_TIMEOUT = 5;  % Dojo query timeout period, seconds
+        TAG_TIMEOUT = 'QUERY_TIMEOUT';
     end
             
     methods (Access = public, Static = true)       
@@ -252,7 +253,7 @@ classdef (Abstract) mlapptools
         
         function setTimeout(hUIFig, newTimeoutInSec)
           % Sets a custom timeout for dojo queries, specified in [s].
-          setappdata(hUIFig, 'QUERY_TIMEOUT', newTimeoutInSec);
+          setappdata(hUIFig, mlapptools.TAG_TIMEOUT, newTimeoutInSec);
         end
                 
         function textAlign(uiElement, alignment)
@@ -376,7 +377,7 @@ classdef (Abstract) mlapptools
         end % getWidgetID
         
         function to = getTimeout(hFig)
-            to = getappdata(hFig,'QUERY_TIMEOUT');
+            to = getappdata(hFig, mlapptools.TAG_TIMEOUT);
             if isempty(to), to = mlapptools.QUERY_TIMEOUT; end
         end % getTimeout
         
