@@ -98,7 +98,11 @@ classdef (Abstract) mlapptools
         % A method for obtaining the webwindow handle and the widgetID corresponding 
         % to the provided uifigure control.
             % Get a handle to the webwindow
-            win = mlapptools.getWebWindow(uiElement.Parent);
+            p = uiElement.Parent;
+            while ~isa(p,'matlab.ui.Figure')
+              p = p.Parent;
+            end
+            win = mlapptools.getWebWindow(p);
             
             % Find which element of the DOM we want to edit
             widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
