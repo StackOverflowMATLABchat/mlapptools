@@ -104,9 +104,12 @@ classdef (Abstract) mlapptools
             widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
         end % getWebElements        
         
-        function [win] = getWebWindow(hUIFig)
+        function [win] = getWebWindow(hUIObj)
             warnState = mlapptools.toggleWarnings('off');
             % Make sure we got a valid handle
+            % Check to make sure we're addressing the parent figure window,
+            % catches the case where the parent is a UIPanel or similar
+            hUIFig = ancestor(hUIObj, 'figure');
             assert(mlapptools.isUIFigure(hUIFig),...
               'mlapptools:getWebWindow:NotUIFigure',...
               'The provided window handle is not of a UIFigure.');
