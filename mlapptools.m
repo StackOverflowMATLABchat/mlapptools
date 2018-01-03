@@ -24,6 +24,7 @@ classdef (Abstract) mlapptools
     properties (Access = private, Constant = true)
         QUERY_TIMEOUT = 5;  % Dojo query timeout period, seconds
         TAG_TIMEOUT = 'QUERY_TIMEOUT';
+        DEF_ID_ATTRIBUTE = 'id';
     end
             
     methods (Access = public, Static = true)       
@@ -53,21 +54,19 @@ classdef (Abstract) mlapptools
         % A method for manipulating text color.
             newcolor = mlapptools.validateCSScolor(newcolor);
 
-            [win, widgetID] = mlapptools.getWebElements(uiElement);
+            [win, ID_struct] = mlapptools.getWebElements(uiElement);
             
-            fontColorSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "color", "%s")', widgetID, newcolor);
-            win.executeJS(fontColorSetStr);
+            mlapptools.setStyle(win, 'color', newcolor, ID_struct);
         end % fontColor
                 
         function fontWeight(uiElement, weight)
         % A method for manipulating font weight, which controls how thick or 
         % thin characters in text should be displayed.
-            weight = mlapptools.validateFontWeight(weight);
+            weight = mlapptools.validateFontWeight(weight);     
             
-            [win, widgetID] = mlapptools.getWebElements(uiElement);
+            [win, ID_struct] = mlapptools.getWebElements(uiElement);
             
-            fontWeightSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "font-weight", "%s")', widgetID, weight);
-            win.executeJS(fontWeightSetStr);
+            mlapptools.setStyle(win, 'font-weight', weight, ID_struct);
         end % fontWeight                                       
                 
         function [fullHTML] = getHTML(hUIFig)
@@ -126,7 +125,8 @@ classdef (Abstract) mlapptools
         end % getWebWindow
         
         function [nfo] = getWidgetInfo(win, widgetID, verboseFlag)
-        % A method for gathering information about a specific dijit widget.
+        % A method for gathering information about a specific dijit widget, if its 
+        % HTML div id is known.
             %% Handling required positional inputs:
             assert(nargin >= 2,'mlapptools:getWidgetInfo:insufficientInputs',...
               'getWidgetInfo must be called with at least 2 inputs.');
@@ -136,7 +136,7 @@ classdef (Abstract) mlapptools
             end
             %% Querying dijit
             win.executeJS(['var W; require(["dijit/registry"], '...
-                 'function(registry){W = registry.byId("' widgetID '");}); W = [W];']);          
+                 'function(registry){W = registry.byId("' widgetID.ID_val '");}); W = [W];']);          
             % Decoding
             try
               nfo = mlapptools.decodeDijitRegistryResult(win,verboseFlag);
@@ -194,8 +194,9 @@ classdef (Abstract) mlapptools
         % 3-parameter call: 
         %   widgetID = setStyle(hControl, styleAttr, styleValue)
         % 4-parameter call: 
-        %              setStyle(hUIFig,   styleAttr, styleValue, widgetID)
+        %              setStyle(hWin,     styleAttr, styleValue, ID_struct)    
         
+            narginchk(3,4);
             % Unpack inputs:
             styleAttr = varargin{2};
             styleValue = varargin{3};
@@ -204,16 +205,15 @@ classdef (Abstract) mlapptools
               case 3
                 hControl = varargin{1};
                 % Get a handle to the webwindow
-                [win, widgetID] = mlapptools.getWebElements(hControl);
+                [win, ID_struct] = mlapptools.getWebElements(hControl);
               case 4                
-                hUIFig = varargin{1};
-                widgetID = varargin{4};
-
-                % Get a handle to the webwindow  
-                win = mlapptools.getWebWindow(hUIFig);
-            end
-                               
-            styleSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "%s", "%s")', widgetID, styleAttr, styleValue);
+                % If we know the ID_struct, the webwindow handle must be available
+                win = varargin{1};
+                ID_struct = varargin{4};                
+            end            
+            
+            styleSetStr = sprintf('dojo.style(dojo.query("[%s = ''%s'']")[0], "%s", "%s")',...
+              ID_struct.ID_attr, ID_struct.ID_val, styleAttr, styleValue);
             % ^ this might result in junk if widgetId=='null'.
             try 
               win.executeJS(styleSetStr);
@@ -226,7 +226,7 @@ classdef (Abstract) mlapptools
             
             % Assign outputs:
             if nargout >= 1
-              varargout{1} = widgetID;
+              varargout{1} = ID_struct;
             end
             
         end % setStyle
@@ -241,10 +241,9 @@ classdef (Abstract) mlapptools
             alignment = lower(alignment);
             mlapptools.validateAlignmentStr(alignment)
             
-            [win, widgetID] = mlapptools.getWebElements(uiElement);
+            [win, ID_struct] = mlapptools.getWebElements(uiElement);
             
-            alignSetStr = sprintf('dojo.style(dojo.query("#%s")[0], "textAlign", "%s")', widgetID, alignment);
-            win.executeJS(alignSetStr);
+            mlapptools.setStyle(win, 'textAlign', alignment, ID_struct);
         end % textAlign
         
         function win = waitForFigureReady(hUIFig)
@@ -346,17 +345,46 @@ classdef (Abstract) mlapptools
           hFig = hFigs(hWebwindow == ww);          
         end % figFromWebwindow
         
-        function [widgetID] = getWidgetID(win, data_tag)
+        function [ID_struct] = getWidgetID(win, data_tag)
+        % This method returns a structure containing some uniquely-identifying information
+        % about a DOM node.
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
-            hFig = mlapptools.figFromWebwindow(win);
-            mlapptools.waitTillFigureLoaded(hFig);
+            mlapptools.waitTillWebwindowLoaded(win);
             try % should work for most UI objects
-              widgetID = win.executeJS(widgetquerystr);
-              widgetID = widgetID(2:end-1);
+              ID = win.executeJS(widgetquerystr);
+              ID_struct = struct('ID_attr', mlapptools.DEF_ID_ATTRIBUTE, 'ID_val', ID(2:end-1));
             catch % fallback for problematic objects
-              warning('Problematic control encountered with no fallback implemented yet.')
-              % TODO
+              % We retry by using the dijit registry:
+              win.executeJS(['var W; require(["dijit/registry"], '...
+                'function(registry){W = registry.toArray().map(x => x.domNode.childNodes);});']);
+              nWidgets = jsondecode(win.executeJS('W.length'));
+              try
+                for ind1 = 0:nWidgets-1
+                  nChild = jsondecode(win.executeJS(sprintf('W[%d].length',ind1)));
+                  for ind2 = 0:nChild-1
+                    tmp = win.executeJS(sprintf('W[%d][%d].dataset',ind1,ind2));
+                    if isempty(tmp)
+                      continue
+                    else
+                      tmp = jsondecode(tmp);
+                    end
+                    if isfield(tmp,'tag') && strcmp(tmp.tag,data_tag)
+                      ID = win.executeJS(sprintf('dojo.getAttr(W[%d][%d].parentNode,"widgetid")',ind1,ind2));
+                      error('Bailout!');
+                    end
+                  end
+                end
+              catch
+                if strcmp(tmp.type,'matlab.ui.container.TreeNode')
+                  tmp = jsondecode(win.executeJS(sprintf(...
+                    'dojo.byId(%s).childNodes[0].childNodes[0].childNodes[0].childNodes[%d].dataset',...
+                     ID(2:end-1),ind2-1)));
+                   ID_struct = struct('ID_attr', 'data-reactid', 'ID_val', tmp.reactid);
+                end
+                % do nothing - bailout.
+              end
             end
+            
         end % getWidgetID
         
         function to = getTimeout(hFig)
