@@ -16,6 +16,7 @@ classdef (Abstract) mlapptools
     % setStyle       - Modify a specified style property.
     % setTimeout     - Override the default timeout for dojo commands, for a specific uifigure.
     % textAlign      - Modify text alignment.
+    % waitForFigureReady - A blocking method that only returns after the uifigure is fully loaded.
     %
     % See README.md for detailed documentation and examples.
     
@@ -107,41 +108,20 @@ classdef (Abstract) mlapptools
         
         function [win] = getWebWindow(hUIFig)
             warnState = mlapptools.toggleWarnings('off');
-            % Make sure we got a valid handle
-            assert(mlapptools.isUIFigure(hUIFig),...
-              'mlapptools:getWebWindow:NotUIFigure',...
-              'The provided window handle is not of a UIFigure.');
             
-            to = mlapptools.getTimeout(hUIFig);
-            tic
-            while true && (toc < to)
-                try
-                    hController = struct(struct(hUIFig).Controller);
-                    % Check for Controller version:
-                    switch subsref(ver('matlab'), substruct('.','Version'))
-                      case {'9.0','9.1'} % R2016a or R2016b
-                        win = hController.Container.CEF;
-                      otherwise  % R2017a onward
-                        win = struct(hController.PlatformHost).CEF;
-                    end
-                    break
-                catch err
-                    if strcmp(err.identifier, 'MATLAB:nonExistentField')
-                        pause(0.01)
-                    else
-                        warning(warnState); % Restore warning state
-                        rethrow(err)
-                    end
-                end
+            mlapptools.waitTillFigureLoaded(hUIFig);
+            % Since the above checks if a Controller exists, the below should work.
+            
+            hController = struct(struct(hUIFig).Controller);
+            % Check for Controller version:
+            switch subsref(ver('matlab'), substruct('.','Version'))
+              case {'9.0','9.1'} % R2016a or R2016b
+                win = hController.Container.CEF;
+              otherwise  % R2017a onward
+                win = struct(hController.PlatformHost).CEF;
             end
+
             warning(warnState); % Restore warning state
-            
-            if toc >= to
-                msgID = 'mlapptools:getWidgetID:QueryTimeout';
-                error(msgID, ...
-                    'WidgetID query timed out after %u seconds, UI needs more time to load', ...
-                    to);
-            end
             
         end % getWebWindow
         
@@ -267,6 +247,23 @@ classdef (Abstract) mlapptools
             win.executeJS(alignSetStr);
         end % textAlign
         
+        function win = waitForFigureReady(hUIFig)
+        % This blocking method waits until a UIFigure and its widgets have fully loaded.
+            %% Make sure that the handle is valid:
+            assert(mlapptools.isUIFigure(hUIFig),...
+              'mlapptools:getWebWindow:NotUIFigure',...
+              'The provided window handle is not of a UIFigure.');
+            assert(strcmp(hUIFig.Visible,'on'),...
+              'mlapptools:getWebWindow:FigureNotVisible',...
+              'Invisible figures are not supported.');
+            %% Wait for the figure to appear:
+            mlapptools.waitTillFigureLoaded(hUIFig);
+            %% Make sure that Dojo is ready:
+            % Get a handle to the webwindow 
+            win = mlapptools.getWebWindow(hUIFig);      
+            mlapptools.waitTillWebwindowLoaded(win, hUIFig);
+        end % waitForFigureReady
+        
     end % Public Static Methods
         
     methods (Static = true, Access = private)
@@ -350,29 +347,14 @@ classdef (Abstract) mlapptools
         
         function [widgetID] = getWidgetID(win, data_tag)
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
-            
-            to = mlapptools.getTimeout(mlapptools.figFromWebwindow(win));
-            tic
-            while true && (toc < to)
-                try
-                    widgetID = win.executeJS(widgetquerystr);
-                    widgetID = widgetID(2:end-1);
-                    break
-                catch err
-                    if ~isempty(strfind(err.message, 'JavaScript error: Uncaught ReferenceError: dojo is not defined')) || ...
-                       ~isempty(strfind(err.message, 'Cannot read property ''widgetid'' of null'))
-                        pause(0.01)
-                    else
-                        rethrow(err)
-                    end
-                end
-            end
-            
-            if toc >= to
-                msgID = 'mlapptools:getWidgetID:QueryTimeout';
-                error(msgID, ...
-                      'widgetID query timed out after %u seconds, UI needs more time to load', ...
-                      to);
+            hFig = mlapptools.figFromWebwindow(win);
+            mlapptools.waitTillFigureLoaded(win, hFig);
+            try % should work for most UI objects
+              widgetID = win.executeJS(widgetquerystr);
+              widgetID = widgetID(2:end-1);
+            catch % fallback for problematic objects
+              warning('Problematic control encountered with no fallback implemented yet. Please ')
+              % TODO
             end
         end % getWidgetID
         
@@ -460,7 +442,51 @@ classdef (Abstract) mlapptools
                 error(msgID, 'Invalid font weight specified: ''%s''', weight);
             end
         end % validateFontWeight
+                
+        function waitTillFigureLoaded(hFig)
+        % A blocking method that ensures a UIFigure has fully loaded.
+            warnState = mlapptools.toggleWarnings('off');            
+            to = mlapptools.getTimeout(hFig);
+            tic
+            while (toc < to) && isempty(struct(hFig).Controller)
+                pause(0.01)
+            end
+            if toc > to
+                msgID = 'mlapptools:waitTillFigureLoaded:TimeoutReached';
+                error(msgID, ...
+                      ['Waiting for the figure to load has timed out after %u seconds. ' ...
+                      'Try increasing the timeout. If the figure clearly loaded in time, yet '...
+                      'this error remains - it might be a bug in the tool! ' ...
+                      'Please let the developers know through GitHub.'], ...
+                      to);
+            end
+            warning(warnState);
+        end % waitTillFigureLoaded
         
+        function waitTillWebwindowLoaded(hWebwindow, hFig)
+        % A blocking method that ensures a certain webwindow has fully loaded. 
+            if nargin < 2
+              hFig = mlapptools.figFromWebwindow(hWebwindow);
+            end
+            
+            to = mlapptools.getTimeout(hFig);
+            tic
+            while (toc < to) && ~jsondecode(hWebwindow.executeJS(...
+                'this.hasOwnProperty("require") && require !== undefined && typeof(require) === "function"'))            
+                pause(0.01)
+            end
+            if toc > to
+                msgID = 'mlapptools:waitTillWebwindowLoaded:TimeoutReached';
+                error(msgID, ...
+                      ['Waiting for the webwindow to load has timed out after %u seconds. ' ...
+                      'Try increasing the timeout. If the figure clearly loaded in time, yet '...
+                      'this error remains - it might be a bug in the tool! ' ...
+                      'Please let the developers know through GitHub.'], ...
+                      to);
+            else
+                hWebwindow.executeJS('require(["dojo/ready"], function(ready){});');
+            end
+        end % waitTillWebwindowLoaded
                         
     end % Private Static Methods
     
