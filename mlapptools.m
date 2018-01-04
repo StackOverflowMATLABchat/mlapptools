@@ -96,13 +96,23 @@ classdef (Abstract) mlapptools
         end % getHTML    
         
         function [win, widgetID] = getWebElements(uiElement)
-        % A method for obtaining the webwindow handle and the widgetID corresponding 
+        % A method for obtaining the webwindow handle and the widget ID corresponding 
         % to the provided uifigure control.
             % Get a handle to the webwindow
             win = mlapptools.getWebWindow(uiElement);
+            mlapptools.waitTillWebwindowLoaded(win);
             
             % Find which element of the DOM we want to edit
-            widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
+            switch uiElement.Type
+              case 'uitreenode'
+                p = uiElement.Parent;
+                if ~isa(p,'matlab.ui.container.Tree')
+                  p.expand(); % The row must be visible to apply changes
+                end
+                widgetID = WidgetID('data-test-id', char(struct(uiElement).NodeId));
+              otherwise % default:              
+                widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
+            end
         end % getWebElements        
         
         function [win] = getWebWindow(hUIObj)
@@ -198,7 +208,7 @@ classdef (Abstract) mlapptools
         % 3-parameter call: 
         %   widgetID = setStyle(hControl, styleAttr, styleValue)
         % 4-parameter call: 
-        %              setStyle(hWin,     styleAttr, styleValue, ID_struct)    
+        %              setStyle(hWin,     styleAttr, styleValue, ID_obj)    
         
             narginchk(3,4);
             % Unpack inputs:
@@ -209,15 +219,15 @@ classdef (Abstract) mlapptools
               case 3
                 hControl = varargin{1};
                 % Get a handle to the webwindow
-                [win, ID_struct] = mlapptools.getWebElements(hControl);
+                [win, ID_obj] = mlapptools.getWebElements(hControl);
               case 4                
-                % If we know the ID_struct, the webwindow handle must be available
+                % By the time we have a WidgetID object, the webwindow handle is available
                 win = varargin{1};
-                ID_struct = varargin{4};                
+                ID_obj = varargin{4};                
             end            
             
             styleSetStr = sprintf('dojo.style(dojo.query("[%s = ''%s'']")[0], "%s", "%s")',...
-              ID_struct.ID_attr, ID_struct.ID_val, styleAttr, styleValue);
+              ID_obj.ID_attr, ID_obj.ID_val, styleAttr, styleValue);
             % ^ this might result in junk if widgetId=='null'.
             try 
               win.executeJS(styleSetStr);
@@ -230,7 +240,7 @@ classdef (Abstract) mlapptools
             
             % Assign outputs:
             if nargout >= 1
-              varargout{1} = ID_struct;
+              varargout{1} = ID_obj;
             end
             
         end % setStyle
@@ -349,47 +359,52 @@ classdef (Abstract) mlapptools
           hFig = hFigs(hWebwindow == ww);          
         end % figFromWebwindow
         
-        function [ID_struct] = getWidgetID(win, data_tag)
+        function [ID_obj] = getWidgetID(win, data_tag)
         % This method returns a structure containing some uniquely-identifying information
         % about a DOM node.
             widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
-            mlapptools.waitTillWebwindowLoaded(win);
             try % should work for most UI objects
               ID = win.executeJS(widgetquerystr);
-              ID_struct = struct('ID_attr', mlapptools.DEF_ID_ATTRIBUTE, 'ID_val', ID(2:end-1));
+              ID_obj = WidgetID(mlapptools.DEF_ID_ATTRIBUTE, ID(2:end-1));
             catch % fallback for problematic objects
-              % We retry by using the dijit registry:
-              win.executeJS(['var W; require(["dijit/registry"], '...
-                'function(registry){W = registry.toArray().map(x => x.domNode.childNodes);});']);
-              nWidgets = jsondecode(win.executeJS('W.length'));
-              try
-                for ind1 = 0:nWidgets-1
-                  nChild = jsondecode(win.executeJS(sprintf('W[%d].length',ind1)));
-                  for ind2 = 0:nChild-1
-                    tmp = win.executeJS(sprintf('W[%d][%d].dataset',ind1,ind2));
-                    if isempty(tmp)
-                      continue
-                    else
-                      tmp = jsondecode(tmp);
-                    end
-                    if isfield(tmp,'tag') && strcmp(tmp.tag,data_tag)
-                      ID = win.executeJS(sprintf('dojo.getAttr(W[%d][%d].parentNode,"widgetid")',ind1,ind2));
-                      error('Bailout!');
-                    end
-                  end
+              warning('This widget is unsupported.');
+%               ID_obj = mlapptools.getWidgetIDFromDijit(win, data_tag);
+            end            
+        end % getWidgetID
+        
+        function ID_obj = getWidgetIDFromDijit(win, data_tag)
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENTAL METHOD!!!
+          win.executeJS(['var W; require(["dijit/registry"], '...
+            'function(registry){W = registry.toArray().map(x => x.domNode.childNodes);});']);
+          nWidgets = jsondecode(win.executeJS('W.length'));
+          try
+            for ind1 = 0:nWidgets-1
+              nChild = jsondecode(win.executeJS(sprintf('W[%d].length',ind1)));
+              for ind2 = 0:nChild-1
+                tmp = win.executeJS(sprintf('W[%d][%d].dataset',ind1,ind2));
+                if isempty(tmp)
+                  continue
+                else
+                  tmp = jsondecode(tmp);
                 end
-              catch
-                if strcmp(tmp.type,'matlab.ui.container.TreeNode')
-                  tmp = jsondecode(win.executeJS(sprintf(...
-                    'dojo.byId(%s).childNodes[0].childNodes[0].childNodes[0].childNodes[%d].dataset',...
-                     ID(2:end-1),ind2-1)));
-                   ID_struct = struct('ID_attr', 'data-reactid', 'ID_val', tmp.reactid);
+                if isfield(tmp,'tag') && strcmp(tmp.tag,data_tag)
+                  ID = win.executeJS(sprintf('dojo.getAttr(W[%d][%d].parentNode,"widgetid")',ind1,ind2));
+                  error('Bailout!');
                 end
-                % do nothing - bailout.
               end
             end
-            
-        end % getWidgetID
+            ID_obj = WidgetID('','');
+          catch
+            % Fix for the case of top-level tree nodes:
+            switch tmp.type
+              case 'matlab.ui.container.TreeNode'
+                tmp = jsondecode(win.executeJS(sprintf(...
+                  'dojo.byId(%s).childNodes[0].childNodes[0].childNodes[0].childNodes[%d].dataset',...
+                   ID(2:end-1),ind2-1)));
+                 ID_obj = WidgetID('data-reactid', tmp.reactid);
+            end
+          end          
+        end % getWidgetIDFromDijit
         
         function to = getTimeout(hFig)
             to = getappdata(hFig, mlapptools.TAG_TIMEOUT);
@@ -524,3 +539,10 @@ classdef (Abstract) mlapptools
     end % Private Static Methods
     
 end % classdef
+
+%{
+Useful debugging code:
+
+jsprops = sort(jsondecode(win.executeJS('Object.keys(this)')));
+
+%}
