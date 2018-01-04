@@ -5,7 +5,7 @@ classdef (Abstract) mlapptools
     %
     % MLAPPTOOLS' public methods:
     %
-    % aboutDojo      - Return the dojo toolkit version.
+    % aboutJSLibs    - Return version information about certain JS libraries.
     % fontColor      - Modify font color.
     % fontWeight     - Modify font weight.
     % getHTML        - Return the full HTML code of a uifigure.
@@ -29,8 +29,9 @@ classdef (Abstract) mlapptools
             
     methods (Access = public, Static = true)       
       
-        function [dojoVersion] = aboutDojo()
-        % A method for getting version info about the Dojo Toolkit visible by MATLAB.
+        function [jsLibVersions] = aboutJSLibs()
+        % A method for getting version info about some JS libararies visible to MATLAB.
+        % This includes the Dojo Toolkit and ReactJS.
         
             if ~numel(matlab.internal.webwindowmanager.instance.findAllWebwindows())
                 f=uifigure; drawnow; tmpWindowCreated = true;              
@@ -40,15 +41,26 @@ classdef (Abstract) mlapptools
 
             dojoVersion = matlab.internal.webwindowmanager.instance ...
                                 .windowList(1).executeJS('dojo.version');
-
+                              
+            reactVersion = matlab.internal.webwindowmanager.instance ...
+                                .windowList(1).executeJS(...                 
+                                'require("react/react.min").version;');
             if tmpWindowCreated
                 delete(f);
             end
+            
             % If MATLAB is sufficiently new, convert the JSON to a struct:  
             if str2double(subsref(ver('matlab'), substruct('.','Version'))) >= 9.1 %R2016b
-                dojoVersion = jsondecode(dojoVersion);
+                dv = jsondecode(dojoVersion);
+                dojoVersion = strrep(join(string(struct2cell(dv)),'.'),'..','.');
+                reactVersion = jsondecode(reactVersion);
+            else
+                dojoVersion = strsplit(dojoVersion,{':',',','"','}','{'});
+                dojoVersion = char(strjoin(dojoVersion([3,5,7,10]),'.'));
+                reactVersion = reactVersion(2:end-1);
             end
-        end % aboutDojo
+            jsLibVersions = struct('dojo', dojoVersion, 'react_js', reactVersion);
+        end % aboutJSLibs        
                  
         function fontColor(uiElement, newcolor)
         % A method for manipulating text color.
@@ -541,8 +553,13 @@ classdef (Abstract) mlapptools
 end % classdef
 
 %{
-Useful debugging code:
+--- Useful debugging commands ---
 
 jsprops = sort(jsondecode(win.executeJS('Object.keys(this)')));
+
+ReactJS:
+win.executeJS('var R = require("react/react.min"); Object.keys(R)')
+win.executeJS('var R = require("react/react-dom.min"); Object.keys(R)')
+
 
 %}
