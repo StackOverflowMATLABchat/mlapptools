@@ -122,6 +122,8 @@ classdef (Abstract) mlapptools
                   p.expand(); % The row must be visible to apply changes
                 end
                 widgetID = WidgetID('data-test-id', char(struct(uiElement).NodeId));
+              case 'uipanel'
+                widgetID = WidgetID('data-tag', mlapptools.getDataTag(uiElement));
               otherwise % default:              
                 widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
             end
