@@ -19,17 +19,17 @@ published Wednesday, September 7th, 2016.
 
 ## Methods
 
-[`aboutJSLibs`](#aboutJSLibs) - Return the loaded versions of Dojo and React.
-[`fontColor`](#fontColor) - Modify font color.
-[`fontWeight`](#fontWeight) - Modify font weight.
-[`getHTML`](#getHTML) - Return the full HTML code of a `uifigure`.
-[`getWebElements`](#getWebElements) - Extract a `webwindow` handle and a widget ID from a `uifigure` control handle.
-[`getWebWindow`](#getWebWindow) - Extract a `webwindow` handle from a `uifigure` handle.
-[`getWidgetInfo`](#getWidgetInfo) - Gather information about a specific dijit widget.
-[`getWidgetList`](#getWidgetList) - Gather information about all dijit widget in a specified `uifigure`.
-[`setStyle`](#setStyle) - Modify a specified style property.
-[`setTimeout`](#setTimeout) - Override the default timeout for dojo commands, for a specific `uifigure`.
-[`textAlign`](#textAlign) - Modify text alignment.
+[`aboutJSLibs`](#aboutJSLibs) - Return the loaded versions of Dojo and React.  
+[`fontColor`](#fontColor) - Modify font color.  
+[`fontWeight`](#fontWeight) - Modify font weight.  
+[`getHTML`](#getHTML) - Return the full HTML code of a `uifigure`.  
+[`getWebElements`](#getWebElements) - Extract a `webwindow` handle and a widget ID from a `uifigure` control handle.  
+[`getWebWindow`](#getWebWindow) - Extract a `webwindow` handle from a `uifigure` handle.  
+[`getWidgetInfo`](#getWidgetInfo) - Gather information about a specific dijit widget.  
+[`getWidgetList`](#getWidgetList) - Gather information about all dijit widget in a specified `uifigure`.  
+[`setStyle`](#setStyle) - Modify a specified style property.  
+[`setTimeout`](#setTimeout) - Override the default timeout for dojo commands, for a specific `uifigure`.  
+[`textAlign`](#textAlign) - Modify text alignment.  
 [`waitForFigureReady`](#waitForFigureReady) - A blocking method that only returns after the uifigure is fully loaded.
 
 -----------------
