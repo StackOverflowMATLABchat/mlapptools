@@ -52,7 +52,7 @@ classdef (Abstract) mlapptools
             % If MATLAB is sufficiently new, convert the JSON to a struct:  
             if str2double(subsref(ver('matlab'), substruct('.','Version'))) >= 9.1 %R2016b
                 dv = jsondecode(dojoVersion);
-                dojoVersion = strrep(join(string(struct2cell(dv)),'.'),'..','.');
+                dojoVersion = char(strrep(join(string(struct2cell(dv)),'.'),'..','.'));
                 reactVersion = jsondecode(reactVersion);
             else
                 dojoVersion = strsplit(dojoVersion,{':',',','"','}','{'});
