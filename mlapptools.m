@@ -121,7 +121,9 @@ classdef (Abstract) mlapptools
                 if ~isa(p,'matlab.ui.container.Tree')
                   p.expand(); % The row must be visible to apply changes
                 end
+                warnState = mlapptools.toggleWarnings('off');
                 widgetID = WidgetID('data-test-id', char(struct(uiElement).NodeId));
+                warning(warnState); % Restore warning state
               case 'uipanel'
                 widgetID = WidgetID('data-tag', mlapptools.getDataTag(uiElement));
               otherwise % default:              
