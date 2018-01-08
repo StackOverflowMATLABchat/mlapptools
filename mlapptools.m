@@ -124,7 +124,7 @@ classdef (Abstract) mlapptools
                 warnState = mlapptools.toggleWarnings('off');
                 widgetID = WidgetID('data-test-id', char(struct(uiElement).NodeId));
                 warning(warnState); % Restore warning state
-              case 'uipanel'
+              case {'uipanel','figure'}
                 widgetID = WidgetID('data-tag', mlapptools.getDataTag(uiElement));
               otherwise % default:              
                 widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
