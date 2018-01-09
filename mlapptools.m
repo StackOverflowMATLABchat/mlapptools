@@ -81,6 +81,19 @@ classdef (Abstract) mlapptools
             mlapptools.setStyle(win, 'font-weight', weight, ID_struct);
         end % fontWeight                                       
                 
+        function [childIDs] = getChildNodeIDs(win,ID_obj)
+        % A method for getting all children nodes (commonly <div>) of a specified node.
+        % Returns a vector WidgetID.
+            queryStr = sprintf(['var W = dojo.query("[%s = ''%s'']").map(',...
+              'function(node){return node.childNodes;})[0];'],ID_obj.ID_attr, ID_obj.ID_val);            
+            % The [0] above is required because an Array of Arrays is returned.
+            [~] = win.executeJS(queryStr);
+            % Try to establish an ID:
+            childIDs = mlapptools.establishIdentities(win);           
+            % "Clear" the temporary JS variable
+            win.executeJS('W = undefined');          
+        end % getChildNodeIDs
+                
         function [fullHTML] = getHTML(hUIFig)
         % A method for dumping the HTML code of a uifigure.
         % Intended for R2017b (and onward?) where the CEF url cannot be simply opened in a browser.
@@ -106,6 +119,18 @@ classdef (Abstract) mlapptools
            fclose(fid);
         %}        
         end % getHTML    
+
+        function [parentID] = getParentNodeID(win,ID_obj)
+        % A method for getting the parent node (commonly <div>) of a specified node.
+        % Returns a scalar WidgetID.
+            queryStr = sprintf(['var W = dojo.query("[%s = ''%s'']").map(',...
+              'function(node){return node.parentNode;});'],ID_obj.ID_attr, ID_obj.ID_val);            
+            [~] = win.executeJS(queryStr);
+            % Try to establish an ID:
+            parentID = mlapptools.establishIdentities(win);           
+            % "Clear" the temporary JS variable
+            win.executeJS('W = undefined');
+        end % getParentNodeID        
         
         function [win, widgetID] = getWebElements(uiElement)
         % A method for obtaining the webwindow handle and the widget ID corresponding 
@@ -360,6 +385,37 @@ classdef (Abstract) mlapptools
         
         end % emptyStructWithFields
                 
+        function [widgetID] = establishIdentities(win) % throws AssertionError
+        % A method for generating WidgetID objects from a list of DOM nodes.
+            assert(strcmp('true', win.executeJS([...
+              'this.hasOwnProperty("W") && W !== undefined && ' ...
+              '(W instanceof NodeList || W instanceof Array) && W.length > 0'])),...
+              'mlapptools:establishIdentities:noSuchNode',...
+              'No nodes meet the condition.');
+          
+            attrs = {'widgetid', 'id', 'data-tag', 'data-reactid'};
+            nA = numel(attrs);
+            %% Preallocate output:
+            widgetID(win.executeJS('W.length') - '0', 1) = WidgetID; % "str2double"
+            %%
+            for indW = 1:numel(widgetID)            
+                for indA = 1:nA
+                    % Get the attribute value:
+                    ID = win.executeJS(sprintf('W[%d].getAttribute("%s")', indW-1, attrs{indA}));
+                    % Test result validity:
+                    if ~strcmp(ID,'null')
+                        % Create a WidgetID object and proceed to the next element in W:
+                        widgetID(indW) = WidgetID(attrs{indA}, ID(2:end-1));
+                        break
+                    end              
+                    if indA == nA
+                        % Reaching this point means that the break didn't trigger for any of the attributes.
+                        warning('The node''s ID could not be established using common attributes.');
+                    end
+                end
+            end         
+        end % establishIdentity
+        
         function [data_tag] = getDataTag(uiElement)
             warnState = mlapptools.toggleWarnings('off');
             data_tag = char(struct(uiElement).Controller.ProxyView.PeerNode.getId);
