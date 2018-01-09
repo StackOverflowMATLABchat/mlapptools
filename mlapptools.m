@@ -124,7 +124,7 @@ classdef (Abstract) mlapptools
                 warnState = mlapptools.toggleWarnings('off');
                 widgetID = WidgetID('data-test-id', char(struct(uiElement).NodeId));
                 warning(warnState); % Restore warning state
-              case {'uipanel','figure'}
+              case {'uipanel','figure','uitabgroup','uitab'}
                 widgetID = WidgetID('data-tag', mlapptools.getDataTag(uiElement));
               otherwise % default:              
                 widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
@@ -157,6 +157,12 @@ classdef (Abstract) mlapptools
         function [nfo] = getWidgetInfo(win, widgetID, verboseFlag)
         % A method for gathering information about a specific dijit widget, if its 
         % HTML div id is known.
+            if ~strcmp(widgetID.ID_attr,'widgetid')
+              warning('getWidgetInfo:InappropriateIDAttribute',...
+                    'This method requires widgets identified by a ''widgetid'' attribute.');
+              nfo = struct([]);
+              return
+            end
             %% Handling required positional inputs:
             assert(nargin >= 2,'mlapptools:getWidgetInfo:insufficientInputs',...
               'getWidgetInfo must be called with at least 2 inputs.');
@@ -209,8 +215,7 @@ classdef (Abstract) mlapptools
           if nargout == 2
             % Convert to a single table:
             varargout{2} = struct2table(mlapptools.unifyStructs(widgets));
-          end % getWidgetInfo
-        
+          end % getWidgetList        
         end 
                 
         function varargout = setStyle(varargin)
@@ -257,13 +262,12 @@ classdef (Abstract) mlapptools
             % Assign outputs:
             if nargout >= 1
               varargout{1} = ID_obj;
-            end
-            
+            end            
         end % setStyle
         
         function setTimeout(hUIFig, newTimeoutInSec)
-          % Sets a custom timeout for dojo queries, specified in [s].
-          setappdata(hUIFig, mlapptools.TAG_TIMEOUT, newTimeoutInSec);
+        % Sets a custom timeout for dojo queries, specified in [s].
+            setappdata(hUIFig, mlapptools.TAG_TIMEOUT, newTimeoutInSec);
         end
                 
         function textAlign(uiElement, alignment)
@@ -309,8 +313,9 @@ classdef (Abstract) mlapptools
             end
         end % checkJavascriptSyntaxError
                 
-        function widgets = decodeDijitRegistryResult(win, verboseFlag)          
-          assert(jsondecode(win.executeJS(...
+        function widgets = decodeDijitRegistryResult(win, verboseFlag)    
+        % As this method relies heavily on jsondecode, it is only supported on R >= 2016b
+          assert(strcmp('true', win.executeJS(...
             'this.hasOwnProperty("W") && W !== undefined && W instanceof Array && W.length > 0')),...
             'mlapptools:decodeDijitRegistryResult:noSuchWidget',...
             'The dijit registry doesn''t contain the specified widgetID.');
@@ -362,23 +367,24 @@ classdef (Abstract) mlapptools
         end % getDataTag        
 
         function hFig = figFromWebwindow(hWebwindow)
-          % Using this method is discouraged as it's relatively computation-intensive.
-          % Since the figure handle is not a property of the webwindow or its children 
-          %   (to our best knowledge), we must list all figures and check which of them
-          %   is associated with the input webwindow.
-          hFigs = findall(groot, 'Type', 'figure');
-          warnState = mlapptools.toggleWarnings('off'); 
-          hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
-          hUIFigs = hUIFigs(strcmp({hUIFigs.Visible},'on')); % Hidden figures are ignored
-          ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
-          warning(warnState); % Restore warning state
-          hFig = hFigs(hWebwindow == ww);          
+        % Using this method is discouraged as it's relatively computation-intensive.
+        % Since the figure handle is not a property of the webwindow or its children 
+        %   (to our best knowledge), we must list all figures and check which of them
+        %   is associated with the input webwindow.
+            hFigs = findall(groot, 'Type', 'figure');
+            warnState = mlapptools.toggleWarnings('off'); 
+            hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
+            hUIFigs = hUIFigs(strcmp({hUIFigs.Visible},'on')); % Hidden figures are ignored
+            ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
+            warning(warnState); % Restore warning state
+            hFig = hFigs(hWebwindow == ww);          
         end % figFromWebwindow
         
         function [ID_obj] = getWidgetID(win, data_tag)
         % This method returns a structure containing some uniquely-identifying information
         % about a DOM node.
-            widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
+            widgetquerystr = sprintf(...
+              'dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
             try % should work for most UI objects
               ID = win.executeJS(widgetquerystr);
               ID_obj = WidgetID(mlapptools.DEF_ID_ATTRIBUTE, ID(2:end-1));
