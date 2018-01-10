@@ -81,6 +81,19 @@ classdef (Abstract) mlapptools
             mlapptools.setStyle(win, 'font-weight', weight, ID_struct);
         end % fontWeight                                       
                 
+        function [childIDs] = getChildNodeIDs(win,ID_obj)
+        % A method for getting all children nodes (commonly <div>) of a specified node.
+        % Returns a vector WidgetID.
+            queryStr = sprintf(['var W = dojo.query("[%s = ''%s'']").map(',...
+              'function(node){return node.childNodes;})[0];'],ID_obj.ID_attr, ID_obj.ID_val);            
+            % The [0] above is required because an Array of Arrays is returned.
+            [~] = win.executeJS(queryStr);
+            % Try to establish an ID:
+            childIDs = mlapptools.establishIdentities(win);           
+            % "Clear" the temporary JS variable
+            win.executeJS('W = undefined');          
+        end % getChildNodeIDs
+                
         function [fullHTML] = getHTML(hUIFig)
         % A method for dumping the HTML code of a uifigure.
         % Intended for R2017b (and onward?) where the CEF url cannot be simply opened in a browser.
@@ -106,6 +119,18 @@ classdef (Abstract) mlapptools
            fclose(fid);
         %}        
         end % getHTML    
+
+        function [parentID] = getParentNodeID(win,ID_obj)
+        % A method for getting the parent node (commonly <div>) of a specified node.
+        % Returns a scalar WidgetID.
+            queryStr = sprintf(['var W = dojo.query("[%s = ''%s'']").map(',...
+              'function(node){return node.parentNode;});'],ID_obj.ID_attr, ID_obj.ID_val);            
+            [~] = win.executeJS(queryStr);
+            % Try to establish an ID:
+            parentID = mlapptools.establishIdentities(win);           
+            % "Clear" the temporary JS variable
+            win.executeJS('W = undefined');
+        end % getParentNodeID        
         
         function [win, widgetID] = getWebElements(uiElement)
         % A method for obtaining the webwindow handle and the widget ID corresponding 
@@ -124,7 +149,7 @@ classdef (Abstract) mlapptools
                 warnState = mlapptools.toggleWarnings('off');
                 widgetID = WidgetID('data-test-id', char(struct(uiElement).NodeId));
                 warning(warnState); % Restore warning state
-              case {'uipanel','figure'}
+              case {'uipanel','figure','uitabgroup','uitab'}
                 widgetID = WidgetID('data-tag', mlapptools.getDataTag(uiElement));
               otherwise % default:              
                 widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
@@ -157,6 +182,12 @@ classdef (Abstract) mlapptools
         function [nfo] = getWidgetInfo(win, widgetID, verboseFlag)
         % A method for gathering information about a specific dijit widget, if its 
         % HTML div id is known.
+            if ~strcmp(widgetID.ID_attr,'widgetid')
+              warning('getWidgetInfo:InappropriateIDAttribute',...
+                    'This method requires widgets identified by a ''widgetid'' attribute.');
+              nfo = struct([]);
+              return
+            end
             %% Handling required positional inputs:
             assert(nargin >= 2,'mlapptools:getWidgetInfo:insufficientInputs',...
               'getWidgetInfo must be called with at least 2 inputs.');
@@ -209,8 +240,7 @@ classdef (Abstract) mlapptools
           if nargout == 2
             % Convert to a single table:
             varargout{2} = struct2table(mlapptools.unifyStructs(widgets));
-          end % getWidgetInfo
-        
+          end % getWidgetList        
         end 
                 
         function varargout = setStyle(varargin)
@@ -257,13 +287,12 @@ classdef (Abstract) mlapptools
             % Assign outputs:
             if nargout >= 1
               varargout{1} = ID_obj;
-            end
-            
+            end            
         end % setStyle
         
         function setTimeout(hUIFig, newTimeoutInSec)
-          % Sets a custom timeout for dojo queries, specified in [s].
-          setappdata(hUIFig, mlapptools.TAG_TIMEOUT, newTimeoutInSec);
+        % Sets a custom timeout for dojo queries, specified in [s].
+            setappdata(hUIFig, mlapptools.TAG_TIMEOUT, newTimeoutInSec);
         end
                 
         function textAlign(uiElement, alignment)
@@ -309,8 +338,9 @@ classdef (Abstract) mlapptools
             end
         end % checkJavascriptSyntaxError
                 
-        function widgets = decodeDijitRegistryResult(win, verboseFlag)          
-          assert(jsondecode(win.executeJS(...
+        function widgets = decodeDijitRegistryResult(win, verboseFlag)    
+        % As this method relies heavily on jsondecode, it is only supported on R >= 2016b
+          assert(strcmp('true', win.executeJS(...
             'this.hasOwnProperty("W") && W !== undefined && W instanceof Array && W.length > 0')),...
             'mlapptools:decodeDijitRegistryResult:noSuchWidget',...
             'The dijit registry doesn''t contain the specified widgetID.');
@@ -355,6 +385,37 @@ classdef (Abstract) mlapptools
         
         end % emptyStructWithFields
                 
+        function [widgetID] = establishIdentities(win) % throws AssertionError
+        % A method for generating WidgetID objects from a list of DOM nodes.
+            assert(strcmp('true', win.executeJS([...
+              'this.hasOwnProperty("W") && W !== undefined && ' ...
+              '(W instanceof NodeList || W instanceof Array) && W.length > 0'])),...
+              'mlapptools:establishIdentities:noSuchNode',...
+              'No nodes meet the condition.');
+          
+            attrs = {'widgetid', 'id', 'data-tag', 'data-reactid'};
+            nA = numel(attrs);
+            %% Preallocate output:
+            widgetID(win.executeJS('W.length') - '0', 1) = WidgetID; % "str2double"
+            %%
+            for indW = 1:numel(widgetID)            
+                for indA = 1:nA
+                    % Get the attribute value:
+                    ID = win.executeJS(sprintf('W[%d].getAttribute("%s")', indW-1, attrs{indA}));
+                    % Test result validity:
+                    if ~strcmp(ID,'null')
+                        % Create a WidgetID object and proceed to the next element in W:
+                        widgetID(indW) = WidgetID(attrs{indA}, ID(2:end-1));
+                        break
+                    end              
+                    if indA == nA
+                        % Reaching this point means that the break didn't trigger for any of the attributes.
+                        warning('The node''s ID could not be established using common attributes.');
+                    end
+                end
+            end         
+        end % establishIdentity
+        
         function [data_tag] = getDataTag(uiElement)
             warnState = mlapptools.toggleWarnings('off');
             data_tag = char(struct(uiElement).Controller.ProxyView.PeerNode.getId);
@@ -362,23 +423,24 @@ classdef (Abstract) mlapptools
         end % getDataTag        
 
         function hFig = figFromWebwindow(hWebwindow)
-          % Using this method is discouraged as it's relatively computation-intensive.
-          % Since the figure handle is not a property of the webwindow or its children 
-          %   (to our best knowledge), we must list all figures and check which of them
-          %   is associated with the input webwindow.
-          hFigs = findall(groot, 'Type', 'figure');
-          warnState = mlapptools.toggleWarnings('off'); 
-          hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
-          hUIFigs = hUIFigs(strcmp({hUIFigs.Visible},'on')); % Hidden figures are ignored
-          ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
-          warning(warnState); % Restore warning state
-          hFig = hFigs(hWebwindow == ww);          
+        % Using this method is discouraged as it's relatively computation-intensive.
+        % Since the figure handle is not a property of the webwindow or its children 
+        %   (to our best knowledge), we must list all figures and check which of them
+        %   is associated with the input webwindow.
+            hFigs = findall(groot, 'Type', 'figure');
+            warnState = mlapptools.toggleWarnings('off'); 
+            hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
+            hUIFigs = hUIFigs(strcmp({hUIFigs.Visible},'on')); % Hidden figures are ignored
+            ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
+            warning(warnState); % Restore warning state
+            hFig = hFigs(hWebwindow == ww);          
         end % figFromWebwindow
         
         function [ID_obj] = getWidgetID(win, data_tag)
         % This method returns a structure containing some uniquely-identifying information
         % about a DOM node.
-            widgetquerystr = sprintf('dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
+            widgetquerystr = sprintf(...
+              'dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', data_tag);
             try % should work for most UI objects
               ID = win.executeJS(widgetquerystr);
               ID_obj = WidgetID(mlapptools.DEF_ID_ATTRIBUTE, ID(2:end-1));
