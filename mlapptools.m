@@ -32,19 +32,27 @@ classdef (Abstract) mlapptools
         function [jsLibVersions] = aboutJSLibs()
         % A method for getting version info about some JS libararies visible to MATLAB.
         % This includes the Dojo Toolkit and ReactJS.
-        
-            if ~numel(matlab.internal.webwindowmanager.instance.findAllWebwindows())
-                f=uifigure; drawnow; tmpWindowCreated = true;              
+            
+            % Test if a *valid* webwindow already exists:
+            % (Written for compatibility with older releases)
+            exWW = matlab.internal.webwindowmanager.instance.findAllWebwindows();
+            validWinID = find(~cellfun(@isempty,strfind({exWW.URL}.','uifigure')),...
+              1, 'first'); %#ok<STRCLFH>
+            if isempty(validWinID)
+                f = uifigure; drawnow; tmpWindowCreated = true;
+                winID = numel(exWW) + 1;
             else
                 tmpWindowCreated = false;
+                winID = validWinID;
             end
 
             dojoVersion = matlab.internal.webwindowmanager.instance ...
-                                .windowList(1).executeJS('dojo.version');
+                                .windowList(winID).executeJS('dojo.version');
                               
             reactVersion = matlab.internal.webwindowmanager.instance ...
-                                .windowList(1).executeJS(...                 
+                                .windowList(winID).executeJS(...                 
                                 'require("react/react.min").version;');
+                              
             if tmpWindowCreated
                 delete(f);
             end
