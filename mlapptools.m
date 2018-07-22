@@ -102,30 +102,59 @@ classdef (Abstract) mlapptools
             win.executeJS('W = undefined');          
         end % getChildNodeIDs
                 
-        function [fullHTML] = getHTML(hUIFig)
+        function [fullHTML] = getHTML(hFigOrWin)
         % A method for dumping the HTML code of a uifigure.
-        % Intended for R2017b (and onward?) where the CEF url cannot be simply opened in a browser.
+        % Intended for R2017b (and onward?) where the CEF url cannot be simply opened in 
+        % an external browser.        
+            %% Obtain webwindow handle:
+            if isa(hFigOrWin,'matlab.ui.Figure')
+                win = mlapptools.getWebWindow(hFigOrWin);
+                indepWW = false;
+            else
+                win = hFigOrWin; % rename the handle
+                %% Attempt to determine if this is an "independent" webwindow:
+                hF = mlapptools.figFromWebwindow(win);
+                if isempty(hF)
+                    indepWW = true;
+                else
+                    indepWW = false;
+                end
+            end
+            %% Get HTML according to webwindow type:
+            if indepWW
+                [~,hWB] = web(win.URL, '-new');
+                fullHTML = hWB.getHtmlText();
+                close(hWB);
+                %% TODO: Try to fix css paths:
+                % See: https://stackoverflow.com/q/50944935/
+                %{
+                % Get all <link> elements:
+                win.executeJS('dojo.query("link")')
+                % Convert relative paths to absolute:
+
+                % Replace paths in HTML:
                 
-            win = mlapptools.getWebWindow(hUIFig);            
-            % Get the outer html:
-            fullHTML = win.executeJS('document.documentElement.outerHTML');
-            % Replace some strings for conversion to work well:
-            fullHTML = strrep(fullHTML,'%','%%');
-            fullHTML = strrep(fullHTML,'><','>\n<');
-            % Append the DOCTYPE header and remove quotes:
-            fullHTML = sprintf(['<!DOCTYPE HTML>\n' fullHTML(2:end-1)]);
-            
-        %% Optional things to do with the output:
-        % Display as web page:
-        %{
-            web(['text://' fullHTML]);
-        %}
-        % Save as file:
-        %{
-           fid = fopen('uifig_raw.html','w');
-           fprintf(fid,'%s',fullHTML);
-           fclose(fid);
-        %}        
+                %}
+            else          
+            % Get the outer html: 
+            fullHTML = win.executeJS('document.documentElement.outerHTML'); 
+            % Replace some strings for conversion to work well: 
+            fullHTML = strrep(fullHTML,'%','%%'); 
+            fullHTML = strrep(fullHTML,'><','>\n<'); 
+            % Append the DOCTYPE header and remove quotes: 
+            fullHTML = sprintf(['<!DOCTYPE HTML>\n' fullHTML(2:end-1)]);                  
+            %% Optional things to do with the output:
+            % Display as web page:
+            %{
+                web(['text://' fullHTML]);
+            %}
+            % Save as file:
+            %{
+               fid = fopen('uifig_raw.html','w');
+               fprintf(fid,'%s',fullHTML);
+               fclose(fid);
+            %}        
+            end
         end % getHTML    
 
         function [parentID] = getParentNodeID(win,ID_obj)
@@ -438,6 +467,10 @@ classdef (Abstract) mlapptools
             hFigs = findall(groot, 'Type', 'figure');
             warnState = mlapptools.toggleWarnings('off'); 
             hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
+            if isempty(hUIFigs)
+              hFig = gobjects(0);
+              return
+            end
             hUIFigs = hUIFigs(strcmp({hUIFigs.Visible},'on')); % Hidden figures are ignored
             ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
             warning(warnState); % Restore warning state
