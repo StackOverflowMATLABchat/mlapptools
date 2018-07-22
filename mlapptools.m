@@ -16,6 +16,7 @@ classdef (Abstract) mlapptools
     % setStyle       - Modify a specified style property.
     % setTimeout     - Override the default timeout for dojo commands, for a specific uifigure.
     % textAlign      - Modify text alignment.
+    % unlockUIFig    - Allow the uifigure to be opened using an external browser.
     % waitForFigureReady - A blocking method that only returns after the uifigure is fully loaded.
     %
     % See README.md for detailed documentation and examples.
@@ -106,6 +107,8 @@ classdef (Abstract) mlapptools
         % A method for dumping the HTML code of a uifigure.
         % Intended for R2017b (and onward?) where the CEF url cannot be simply opened in 
         % an external browser.        
+        % Mostly irrelevant for UIFigures as of the introduction of mlapptools.unlockUIFig(...),
+        % but can be useful for other non-uifigure webwindows.
             %% Obtain webwindow handle:
             if isa(hFigOrWin,'matlab.ui.Figure')
                 win = mlapptools.getWebWindow(hFigOrWin);
@@ -341,6 +344,16 @@ classdef (Abstract) mlapptools
             
             mlapptools.setStyle(win, 'textAlign', alignment, ID_struct);
         end % textAlign
+
+        function unlockUIFig(hUIFig)
+        % This method allows the uifigure to be opened in an external browser,
+        % as was possible before R2017b.
+            if verLessThan('matlab','9.3')
+                % Do nothing, since this is not required pre-R2017b.
+            else              
+                struct(hUIFig).Controller.ProxyView.PeerNode.setProperty('hostType','""');
+            end
+        end % unlockUIFig
         
         function win = waitForFigureReady(hUIFig)
         % This blocking method waits until a UIFigure and its widgets have fully loaded.
