@@ -171,6 +171,50 @@ classdef (Abstract) mlapptools
             % "Clear" the temporary JS variable
             win.executeJS('W = undefined');
         end % getParentNodeID        
+
+        function [ID_obj] = getTableCellID(hTable, r, c)
+        % This method returns one or more ID objects, corresponding to specific cells in a
+        % uitable, as defined by the cells' row and column indices.
+            %% Constants:
+            TABLE_CLASS_NAME = 'matlab.ui.control.Table';
+            CELL_ID_PREFIX = {'variableeditor_views_editors_UITableEditor_'};
+            %% Input tests:                    
+            assert( isa(hTable, TABLE_CLASS_NAME) && ishandle(hTable), 'Invalid uitable handle!');
+            nR = numel(r); nC = numel(c);
+            assert( nR == nC, 'The number of elements in r and c must be the same!');
+            sz = size(hTable.Data);
+            assert( all(r <= sz(1)), 'One or more requested rows are out-of-bounds!');
+            assert( all(c <= sz(2)), 'One or more requested columns are out-of-bounds!');
+            %% Computing the offset
+            % If there's more than one uitable in the figure, IDs are assigned 
+            % consecutively. For example, in the case of a 3x3 and 4x4 arrays, 
+            % where the smaller table was created first, IDs will assigned as follows:
+            %
+            %  [ 0  1  2   [ 9 10 11 12
+            %    3  4  5    13 14 15 16
+            %    6  7  8]   17 18 19 20 
+            %               21 22 23 24]
+            %
+            % ... which is why if want to change the 2nd table we need to offset the 
+            % IDs by the total amount of elements in all preceding arrays, which is 9.
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % Get siblings (flipping to negate that newer children appear first)
+            hC = flip(hTable.Parent.Children);
+            % Find which of them is a table:
+            hC = hC( arrayfun(@(x)isa(x, TABLE_CLASS_NAME), hC) );
+            % Find the position of the current table in the list, and count the elements of
+            % all preceding tables:
+            offset = sum(arrayfun(@(x)numel(x.Data), hC(1:find(hC == hTable)-1)));
+            % Compute indices, r and c are reversed due to row-major ordering of the IDs          
+            idx = sub2ind(sz, c, r) + offset - 1; % -1 because JS IDs are 0-based
+            idc = strcat(CELL_ID_PREFIX, num2str(idx(:)));
+            % Preallocation:
+            ID_obj(nR,1) = WidgetID;
+            % ID array population:
+            for indI = 1:numel(idx)      
+                ID_obj(indI) = WidgetID(mlapptools.DEF_ID_ATTRIBUTE, idc{indI} );
+            end
+        end % getTableCellID       
         
         function [win, widgetID] = getWebElements(uiElement)
         % A method for obtaining the webwindow handle and the widget ID corresponding 
@@ -488,7 +532,7 @@ classdef (Abstract) mlapptools
             ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
             warning(warnState); % Restore warning state
             hFig = hFigs(hWebwindow == ww);          
-        end % figFromWebwindow
+        end % figFromWebwindow        
         
         function [ID_obj] = getWidgetID(win, data_tag)
         % This method returns a structure containing some uniquely-identifying information
@@ -667,6 +711,12 @@ classdef (Abstract) mlapptools
                 hWebwindow.executeJS('require(["dojo/ready"], function(ready){});');
             end
         end % waitTillWebwindowLoaded
+        
+        function htmlRootPath = getFullPathFromWW(win)
+          % Get a local href value, e.g. from an included main.css
+          href = win.executeJS('document.body.getElementsByTagName("link")[0].href');
+          htmlRootPath = win.executeJS(['var link = document.createElement("a"); link.href = ' href ';']);
+        end
                         
     end % Private Static Methods
     
