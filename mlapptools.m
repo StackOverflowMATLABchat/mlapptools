@@ -348,11 +348,64 @@ classdef (Abstract) mlapptools
         function unlockUIFig(hUIFig)
         % This method allows the uifigure to be opened in an external browser,
         % as was possible before R2017b.
+            assert(checkCert(), 'Certificate not imported; cannot proceed.');
             if verLessThan('matlab','9.3')
                 % Do nothing, since this is not required pre-R2017b.
             else              
                 struct(hUIFig).Controller.ProxyView.PeerNode.setProperty('hostType','""');
             end
+            
+          function tf = checkCert()
+          SUCCESS_CODE = 0;
+            switch true
+              case ispc                  
+                  %% Test if certificate is already accepted:
+                  [s,c] = system('certutil -verifystore -user "Root" localhost');
+                  if s == SUCCESS_CODE
+                    tf = true;
+                  else
+                    reply = questdlg('Certificate not found. Would you like to import it?',...
+                                   'Import "localhost" certificate','Yes','No','Yes');
+                    if strcmp(reply,'Yes')
+                        %% Import the certificate
+                        [s,c] = system(['certutil -addstore -user "Root" ' ...
+                                   connector.getCertificateLocation()]);
+                        tf = s == SUCCESS_CODE;
+                        if tf
+                          disp(['Certificate import successful! You should now be '...
+                                'able to navigate to the webwindow URL in your browser.']);...
+                          disp(['If the figure is still blank, recreate it and navigate '...
+                                'to the new URL.']);
+                        else
+                          disp(c);
+                        end
+                    else
+                      disp(c);
+                      tf = false;
+                    end
+                  end                                
+              case isunix
+                  warning('checkCert:unsupportedOS:unix',...
+                    'OS not supported for automatic testing, assuming the certificate is in order.');
+                  tf = true;
+                  % TODO
+                  % See: https://askubuntu.com/a/648629, https://superuser.com/a/437377
+                  %{
+                  system(['sudo cp ' connector.getCertificateLocation() ...
+                          ' /usr/local/share/ca-certificates/localhost-matlab.crt && '...
+                          'sudo dpkg-reconfigure ca-certificates && sudo update-ca-certificates'])
+                  %}
+              case ismac
+                  warning('checkCert:unsupportedOS:mac',...
+                    'OS not supported for automatic testing, assuming the certificate is in order.');
+                  tf = true;
+                  % TODO
+                  %{
+                  system(['sudo security add-trusted-cert -d -r trustRoot -k '...
+                  '"$HOME/Library/Keychains/login.keychain"' connector.getCertificateLocation()]);
+                  %}
+            end
+          end % checkCert
         end % unlockUIFig
         
         function win = waitForFigureReady(hUIFig)
