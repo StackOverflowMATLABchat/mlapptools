@@ -356,16 +356,21 @@ classdef (Abstract) mlapptools
                 ID_obj = varargin{4};                
             end            
             
-            styleSetStr = sprintf('dojo.style(dojo.query("[%s = ''%s'']")[0], "%s", "%s")',...
-              ID_obj.ID_attr, ID_obj.ID_val, styleAttr, styleValue);
-            % ^ this might result in junk if widgetId=='null'.
-            try 
-              win.executeJS(styleSetStr);
-              % ^ this might crash in case of invalid styleAttr/styleValue.
-            catch ME
-                % Test for "Invalid or unexpected token":
-                ME = mlapptools.checkJavascriptSyntaxError(ME, styleSetStr);
-                rethrow(ME);       
+            % Handle the case of a non-scalar ID_obj recursively:
+            if ~isscalar(ID_obj)
+              arrayfun(@(x)mlapptools.setStyle(win, styleAttr, styleValue, x), ID_obj);
+            else            
+              styleSetStr = sprintf('dojo.style(dojo.query("[%s = ''%s'']")[0], "%s", "%s")',...
+                ID_obj.ID_attr, ID_obj.ID_val, styleAttr, styleValue);
+              % ^ this might result in junk if widgetId=='null'.
+              try 
+                win.executeJS(styleSetStr);
+                % ^ this might crash in case of invalid styleAttr/styleValue.
+              catch ME
+                  % Test for "Invalid or unexpected token":
+                  ME = mlapptools.checkJavascriptSyntaxError(ME, styleSetStr);
+                  rethrow(ME);       
+              end
             end
             
             % Assign outputs:
