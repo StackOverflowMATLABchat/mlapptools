@@ -356,54 +356,78 @@ classdef (Abstract) mlapptools
             end
             
           function tf = checkCert()
-          SUCCESS_CODE = 0;
+            % This tools works on the OS-level, and was tested on Win 7 & 10.
+            %
+            % With certain browsers it might not be required/helpful as noted in
+            % https://askubuntu.com/questions/73287/#comment1533817_94861 :
+            % Note that Chromium and Firefox do not use the system CA certificates, 
+            % so require separate instructions. 
+            %  - In Chromium, visit chrome://settings/certificates, click Authorities, 
+            %    then click import, and select your .pem.
+            %  - In Firefox, visit about:preferences#privacy, click Certificates,
+            %    View Certificates, Authorities, then click Import and select your .pem.                        
+            SUCCESS_CODE = 0;
+            CL = connector.getCertificateLocation(); % certificate location; 
+            if isempty(CL), CL = fullfile(prefdir, 'thisMatlab.pem'); end
+            %% Test if certificate is already accepted:
             switch true
-              case ispc                  
-                  %% Test if certificate is already accepted:
-                  [s,c] = system('certutil -verifystore -user "Root" localhost');
-                  if s == SUCCESS_CODE
-                    tf = true;
-                  else
-                    reply = questdlg('Certificate not found. Would you like to import it?',...
-                                   'Import "localhost" certificate','Yes','No','Yes');
-                    if strcmp(reply,'Yes')
-                        %% Import the certificate
-                        [s,c] = system(['certutil -addstore -user "Root" ' ...
-                                   connector.getCertificateLocation()]);
-                        tf = s == SUCCESS_CODE;
-                        if tf
-                          disp(['Certificate import successful! You should now be '...
-                                'able to navigate to the webwindow URL in your browser.']);...
-                          disp(['If the figure is still blank, recreate it and navigate '...
-                                'to the new URL.']);
-                        else
-                          disp(c);
-                        end
-                    else
-                      disp(c);
-                      tf = false;
-                    end
-                  end                                
+              case ispc                                    
+                [s,c] = system('certutil -verifystore -user "Root" localhost');
               case isunix
-                  warning('checkCert:unsupportedOS:unix',...
-                    'OS not supported for automatic testing, assuming the certificate is in order.');
-                  tf = true;
-                  % TODO
-                  % See: https://askubuntu.com/a/648629, https://superuser.com/a/437377
-                  %{
-                  system(['sudo cp ' connector.getCertificateLocation() ...
-                          ' /usr/local/share/ca-certificates/localhost-matlab.crt && '...
-                          'sudo dpkg-reconfigure ca-certificates && sudo update-ca-certificates'])
-                  %}
-              case ismac
-                  warning('checkCert:unsupportedOS:mac',...
-                    'OS not supported for automatic testing, assuming the certificate is in order.');
-                  tf = true;
-                  % TODO
-                  %{
-                  system(['sudo security add-trusted-cert -d -r trustRoot -k '...
-                  '"$HOME/Library/Keychains/login.keychain"' connector.getCertificateLocation()]);
-                  %}
+                [s,c] = system(['openssl crl2pkcs7 -nocrl -certfile '...
+                  '/etc/ssl/certs/ca-certificates.crt '...
+                  '| openssl pkcs7 -print_certs -noout '...
+                  '| grep ''^issuer=/C=US/O=company/CN=localhost/OU=engineering''']);
+              case ismac 
+                [s,c] = system('security find-certificate -c "localhost"');
+            end
+            isAccepted = s == SUCCESS_CODE;
+            
+            %% Try to import certificate:
+            if ~isAccepted
+              reply = questdlg('Certificate not found. Would you like to import it?',...
+                               'Import "localhost" certificate','Yes','No','Yes');
+              if strcmp(reply,'Yes'), switch true %#ok<ALIGN>
+                case ispc
+                  [s,c] = system(['certutil -addstore -user "Root" ' CL]);
+                  % %APPDATA%\MathWorks\MATLAB\R20##x\thisMatlab.pem
+                case isunix
+                  [s,c] = system(['sudo cp ' CL ...
+                    ' /usr/local/share/ca-certificates/localhost-matlab.crt && ',...
+                    'sudo update-ca-certificates']);
+                  % ~/.matlab/thisMatlab.pem
+                case ismac % https://apple.stackexchange.com/a/80625
+                  [s,c] = system(['security add-trusted-cert -d -r trustRoot -p ssl -k ' ...
+                                  '"$HOME/Library/Keychains/login.keychain" ' CL]);
+                  % ~/Library/Application\ Support/MathWorks/MATLAB/R20##x/thisMatlab.pem 
+                end % switch   
+                wasImported = s == SUCCESS_CODE;
+              else
+                warning('Certificate import cancelled by user!');
+                wasImported = false;
+              end
+            end
+            %% Report result
+            tf = isAccepted || wasImported;
+            if wasImported
+              fprintf(1, '\n%s\n%s\n%s\n',...
+                ['Certificate import successful! You should now be '...
+                 'able to navigate to the webwindow URL in your browser.'],...
+                ['If the figure is still blank, recreate it and navigate '...
+                 'to the new URL.'],...
+                ['Also, if you have a script blocking addon (e.g. NoScript), '...
+                 'be sure to whitelist "localhost".']);
+            elseif ~isAccepted % && ~wasImported (implicitly)
+              disp(c);
+              fprintf(1, '\n%s\n%s\n\t%s\n\t%s\n%s\n',...
+                'Either certificate presence cannot be determined, or the import failed.',...
+                'If you''re using Chromium or Firefox you can follow these instructions:',...
+               ['- In Chromium, visit chrome://settings > (Show advanced) > '...
+               'Manage HTTP/SSL certificates > Trusted Root Certification Authorities Tab'...
+               ' > Import, and select your .pem.'],...
+               ['- In Firefox, visit about:preferences#privacy, click Certificates > ',...
+                'View Certificates > Authorities > Import, and select your .pem.'],...
+               ['The certificate is found here: ' CL ]);                  
             end
           end % checkCert
         end % unlockUIFig
