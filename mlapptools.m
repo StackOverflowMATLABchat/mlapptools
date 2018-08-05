@@ -177,7 +177,7 @@ classdef (Abstract) mlapptools
         % to the provided uifigure control.
             % Get a handle to the webwindow
             win = mlapptools.getWebWindow(uiElement);
-            mlapptools.waitTillWebwindowLoaded(win);
+            mlapptools.waitTillWebwindowLoaded(win, ancestor(uiElement, 'matlab.ui.Figure') );
             
             % Find which element of the DOM we want to edit
             switch uiElement.Type
@@ -616,8 +616,12 @@ classdef (Abstract) mlapptools
         end % getWidgetIDFromDijit
         
         function to = getTimeout(hFig)
-            to = getappdata(hFig, mlapptools.TAG_TIMEOUT);
-            if isempty(to), to = mlapptools.QUERY_TIMEOUT; end
+            if isempty(hFig) || ~isa(hFig, 'matlab.ui.Figure')
+              to = mlapptools.QUERY_TIMEOUT;
+            else
+              to = getappdata(hFig, mlapptools.TAG_TIMEOUT);
+              if isempty(to), to = mlapptools.QUERY_TIMEOUT; end
+            end
         end % getTimeout
         
         function tf = isUIFigure(hList)
@@ -722,11 +726,14 @@ classdef (Abstract) mlapptools
         
         function waitTillWebwindowLoaded(hWebwindow, hFig)
         % A blocking method that ensures a certain webwindow has fully loaded. 
-            if nargin < 2
-              hFig = mlapptools.figFromWebwindow(hWebwindow);
+            try    
+              if nargin < 2
+                hFig = mlapptools.figFromWebwindow(hWebwindow);
+              end            
+              to = mlapptools.getTimeout(hFig);
+            catch % possible workaround for R2017a:
+              to = mlapptools.getTimeout([]);
             end
-            
-            to = mlapptools.getTimeout(hFig);
             tic
             while (toc < to) && ~jsondecode(hWebwindow.executeJS(...
                 'this.hasOwnProperty("require") && require !== undefined && typeof(require) === "function"'))            
