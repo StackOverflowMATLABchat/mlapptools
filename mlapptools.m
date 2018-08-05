@@ -16,6 +16,7 @@ classdef (Abstract) mlapptools
     % setStyle       - Modify a specified style property.
     % setTimeout     - Override the default timeout for dojo commands, for a specific uifigure.
     % textAlign      - Modify text alignment.
+    % unlockUIFig    - Allow the uifigure to be opened using an external browser.
     % waitForFigureReady - A blocking method that only returns after the uifigure is fully loaded.
     %
     % See README.md for detailed documentation and examples.
@@ -102,30 +103,61 @@ classdef (Abstract) mlapptools
             win.executeJS('W = undefined');          
         end % getChildNodeIDs
                 
-        function [fullHTML] = getHTML(hUIFig)
+        function [fullHTML] = getHTML(hFigOrWin)
         % A method for dumping the HTML code of a uifigure.
-        % Intended for R2017b (and onward?) where the CEF url cannot be simply opened in a browser.
+        % Intended for R2017b (and onward?) where the CEF url cannot be simply opened in 
+        % an external browser.        
+        % Mostly irrelevant for UIFigures as of the introduction of mlapptools.unlockUIFig(...),
+        % but can be useful for other non-uifigure webwindows.
+            %% Obtain webwindow handle:
+            if isa(hFigOrWin,'matlab.ui.Figure')
+                win = mlapptools.getWebWindow(hFigOrWin);
+                indepWW = false;
+            else
+                win = hFigOrWin; % rename the handle
+                %% Attempt to determine if this is an "independent" webwindow:
+                hF = mlapptools.figFromWebwindow(win);
+                if isempty(hF)
+                    indepWW = true;
+                else
+                    indepWW = false;
+                end
+            end
+            %% Get HTML according to webwindow type:
+            if indepWW
+                [~,hWB] = web(win.URL, '-new');
+                fullHTML = hWB.getHtmlText();
+                close(hWB);
+                %% TODO: Try to fix css paths:
+                % See: https://stackoverflow.com/q/50944935/
+                %{
+                % Get all <link> elements:
+                win.executeJS('dojo.query("link")')
+                % Convert relative paths to absolute:
+
+                % Replace paths in HTML:
                 
-            win = mlapptools.getWebWindow(hUIFig);            
-            % Get the outer html:
-            fullHTML = win.executeJS('document.documentElement.outerHTML');
-            % Replace some strings for conversion to work well:
-            fullHTML = strrep(fullHTML,'%','%%');
-            fullHTML = strrep(fullHTML,'><','>\n<');
-            % Append the DOCTYPE header and remove quotes:
-            fullHTML = sprintf(['<!DOCTYPE HTML>\n' fullHTML(2:end-1)]);
-            
-        %% Optional things to do with the output:
-        % Display as web page:
-        %{
-            web(['text://' fullHTML]);
-        %}
-        % Save as file:
-        %{
-           fid = fopen('uifig_raw.html','w');
-           fprintf(fid,'%s',fullHTML);
-           fclose(fid);
-        %}        
+                %}
+            else          
+            % Get the outer html: 
+            fullHTML = win.executeJS('document.documentElement.outerHTML'); 
+            % Replace some strings for conversion to work well: 
+            fullHTML = strrep(fullHTML,'%','%%'); 
+            fullHTML = strrep(fullHTML,'><','>\n<'); 
+            % Append the DOCTYPE header and remove quotes: 
+            fullHTML = sprintf(['<!DOCTYPE HTML>\n' fullHTML(2:end-1)]);                  
+            %% Optional things to do with the output:
+            % Display as web page:
+            %{
+                web(['text://' fullHTML]);
+            %}
+            % Save as file:
+            %{
+               fid = fopen('uifig_raw.html','w');
+               fprintf(fid,'%s',fullHTML);
+               fclose(fid);
+            %}        
+            end
         end % getHTML    
 
         function [parentID] = getParentNodeID(win,ID_obj)
@@ -312,6 +344,93 @@ classdef (Abstract) mlapptools
             
             mlapptools.setStyle(win, 'textAlign', alignment, ID_struct);
         end % textAlign
+
+        function unlockUIFig(hUIFig)
+        % This method allows the uifigure to be opened in an external browser,
+        % as was possible before R2017b.
+            assert(checkCert(), 'Certificate not imported; cannot proceed.');
+            if verLessThan('matlab','9.3')
+                % Do nothing, since this is not required pre-R2017b.
+            else              
+                struct(hUIFig).Controller.ProxyView.PeerNode.setProperty('hostType','""');
+            end
+            
+          function tf = checkCert()
+            % This tools works on the OS-level, and was tested on Win 7 & 10.
+            %
+            % With certain browsers it might not be required/helpful as noted in
+            % https://askubuntu.com/questions/73287/#comment1533817_94861 :
+            % Note that Chromium and Firefox do not use the system CA certificates, 
+            % so require separate instructions. 
+            %  - In Chromium, visit chrome://settings/certificates, click Authorities, 
+            %    then click import, and select your .pem.
+            %  - In Firefox, visit about:preferences#privacy, click Certificates,
+            %    View Certificates, Authorities, then click Import and select your .pem.                        
+            SUCCESS_CODE = 0;
+            CL = connector.getCertificateLocation(); % certificate location; 
+            if isempty(CL), CL = fullfile(prefdir, 'thisMatlab.pem'); end
+            %% Test if certificate is already accepted:
+            switch true
+              case ispc                                    
+                [s,c] = system('certutil -verifystore -user "Root" localhost');
+              case isunix
+                [s,c] = system(['openssl crl2pkcs7 -nocrl -certfile '...
+                  '/etc/ssl/certs/ca-certificates.crt '...
+                  '| openssl pkcs7 -print_certs -noout '...
+                  '| grep ''^issuer=/C=US/O=company/CN=localhost/OU=engineering''']);
+              case ismac 
+                [s,c] = system('security find-certificate -c "localhost"');
+            end
+            isAccepted = s == SUCCESS_CODE;
+            
+            %% Try to import certificate:
+            if ~isAccepted
+              reply = questdlg('Certificate not found. Would you like to import it?',...
+                               'Import "localhost" certificate','Yes','No','Yes');
+              if strcmp(reply,'Yes'), switch true %#ok<ALIGN>
+                case ispc
+                  [s,c] = system(['certutil -addstore -user "Root" ' CL]);
+                  % %APPDATA%\MathWorks\MATLAB\R20##x\thisMatlab.pem
+                case isunix
+                  [s,c] = system(['sudo cp ' CL ...
+                    ' /usr/local/share/ca-certificates/localhost-matlab.crt && ',...
+                    'sudo update-ca-certificates']);
+                  % ~/.matlab/thisMatlab.pem
+                case ismac % https://apple.stackexchange.com/a/80625
+                  [s,c] = system(['security add-trusted-cert -d -r trustRoot -p ssl -k ' ...
+                                  '"$HOME/Library/Keychains/login.keychain" ' CL]);
+                  % ~/Library/Application\ Support/MathWorks/MATLAB/R20##x/thisMatlab.pem 
+                end % switch   
+                wasImported = s == SUCCESS_CODE;
+              else
+                warning('Certificate import cancelled by user!');
+                wasImported = false;
+              end
+            end
+            %% Report result
+            tf = isAccepted || wasImported;
+            if wasImported
+              fprintf(1, '\n%s\n%s\n%s\n',...
+                ['Certificate import successful! You should now be '...
+                 'able to navigate to the webwindow URL in your browser.'],...
+                ['If the figure is still blank, recreate it and navigate '...
+                 'to the new URL.'],...
+                ['Also, if you have a script blocking addon (e.g. NoScript), '...
+                 'be sure to whitelist "localhost".']);
+            elseif ~isAccepted % && ~wasImported (implicitly)
+              disp(c);
+              fprintf(1, '\n%s\n%s\n\t%s\n\t%s\n%s\n',...
+                'Either certificate presence cannot be determined, or the import failed.',...
+                'If you''re using Chromium or Firefox you can follow these instructions:',...
+               ['- In Chromium, visit chrome://settings > (Show advanced) > '...
+               'Manage HTTP/SSL certificates > Trusted Root Certification Authorities Tab'...
+               ' > Import, and select your .pem.'],...
+               ['- In Firefox, visit about:preferences#privacy, click Certificates > ',...
+                'View Certificates > Authorities > Import, and select your .pem.'],...
+               ['The certificate is found here: ' CL ]);                  
+            end
+          end % checkCert
+        end % unlockUIFig
         
         function win = waitForFigureReady(hUIFig)
         % This blocking method waits until a UIFigure and its widgets have fully loaded.
@@ -438,6 +557,10 @@ classdef (Abstract) mlapptools
             hFigs = findall(groot, 'Type', 'figure');
             warnState = mlapptools.toggleWarnings('off'); 
             hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
+            if isempty(hUIFigs)
+              hFig = gobjects(0);
+              return
+            end
             hUIFigs = hUIFigs(strcmp({hUIFigs.Visible},'on')); % Hidden figures are ignored
             ww = arrayfun(@mlapptools.getWebWindow, hUIFigs);
             warning(warnState); % Restore warning state
