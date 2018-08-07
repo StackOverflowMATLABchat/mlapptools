@@ -456,13 +456,13 @@ classdef (Abstract) mlapptools
             %  - In Chromium, visit chrome://settings/certificates, click Authorities, 
             %    then click import, and select your .pem.
             %  - In Firefox, visit about:preferences#privacy, click Certificates,
-            %    View Certificates, Authorities, then click Import and select your .pem.                        
+            %    View Certificates, Authorities, then click Import and select your .pem.
             SUCCESS_CODE = 0;
             CL = connector.getCertificateLocation(); % certificate location; 
             if isempty(CL), CL = fullfile(prefdir, 'thisMatlab.pem'); end
             %% Test if certificate is already accepted:
             switch true
-              case ispc                                    
+              case ispc
                 [s,c] = system('certutil -verifystore -user "Root" localhost');
               case isunix
                 [s,c] = system(['openssl crl2pkcs7 -nocrl -certfile '...
@@ -475,7 +475,9 @@ classdef (Abstract) mlapptools
             isAccepted = s == SUCCESS_CODE;
             
             %% Try to import certificate:
-            if ~isAccepted
+            if isAccepted
+              wasImported = false;
+            else
               reply = questdlg('Certificate not found. Would you like to import it?',...
                                'Import "localhost" certificate','Yes','No','Yes');
               if strcmp(reply,'Yes'), switch true %#ok<ALIGN>
@@ -518,7 +520,7 @@ classdef (Abstract) mlapptools
                ' > Import, and select your .pem.'],...
                ['- In Firefox, visit about:preferences#privacy, click Certificates > ',...
                 'View Certificates > Authorities > Import, and select your .pem.'],...
-               ['The certificate is found here: ' CL ]);                  
+               ['The certificate is found here: ' CL ]);
             end
           end % checkCert
     end % unlockUIFig
