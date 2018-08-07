@@ -6,6 +6,8 @@ classdef (Abstract) mlapptools
   % MLAPPTOOLS' public methods:
   %
   % aboutJSLibs    - Return version information about certain JS libraries.
+  % addClasses     - Add specified CSS classes to one or more DOM nodes.
+  % addCssToHead   - Inject inline CSS into the <head> section of the figure's HTML.
   % fontColor      - Modify font color.
   % fontWeight     - Modify font weight.
   % getHTML        - Return the full HTML code of a uifigure.
@@ -69,6 +71,47 @@ classdef (Abstract) mlapptools
       end
       jsLibVersions = struct('dojo', dojoVersion, 'react_js', reactVersion);
     end % aboutJSLibs
+    
+    function addClasses(uiElement, cssClasses)
+      % A method for adding CSS classes to DOM nodes.
+      
+      % Ensure we end up with a space-delimited list of classes:
+      if ~ischar(cssClasses) && numel(cssClasses) > 1
+        classList = strjoin(cssClasses, ' ');
+      else
+        classList = cssClasses;
+      end
+      
+      if ~isscalar(uiElement)
+        arrayfun(@(x)mlapptools.addClasses(x, cssClasses), uiElement);
+      else
+        [win, ID_struct] = mlapptools.getWebElements(uiElement);
+        % Construct a dojo.js statement:
+        classSetStr = sprintf(...
+          'dojo.addClass(dojo.query("[%s = ''%s'']")[0], "%s")',...
+          ID_struct.ID_attr, ID_struct.ID_val, classList);
+        
+        % Add the class(es) to the DOM node:
+        win.executeJS(classSetStr);
+      end
+      
+    end % addClasses
+    
+    function addCssToHead(hWin, cssText)
+      % A method for adding an inline CSS to the HTML <head> section.
+      
+      % in the future, cssText could be a local or a remote ile path:
+      if isfile(cssText)
+        warning(['.css files are not supported at this time. Please provide a "stringified" CSS instead.'...
+          '\nSee also: https://github.com/Khlick/matlabUiHacks/blob/master/utils/stringify.m'],[]);
+      elseif ~isempty(regexpi(cssText,'http(s)?://'))
+        warning(['Remote .css files are not supported at this time. Please provide a "stringified" CSS instead.'...
+          '\nSee also: https://github.com/Khlick/matlabUiHacks/blob/master/utils/stringify.m'],[]);
+      end
+      
+      % Inject the CSS:
+      hWin.executeJS(['document.head.innerHTML += ', cssText]);      
+    end % addCssToHead
     
     function fontColor(uiElement, color)
       % A method for manipulating text color.
