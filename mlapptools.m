@@ -70,13 +70,13 @@ classdef (Abstract) mlapptools
       jsLibVersions = struct('dojo', dojoVersion, 'react_js', reactVersion);
     end % aboutJSLibs
     
-    function fontColor(uiElement, newcolor)
+    function fontColor(uiElement, color)
       % A method for manipulating text color.
-      newcolor = mlapptools.validateCSScolor(newcolor);
+      color = mlapptools.validateCSScolor(color);
       
       [win, ID_struct] = mlapptools.getWebElements(uiElement);
       
-      mlapptools.setStyle(win, 'color', newcolor, ID_struct);
+      mlapptools.setStyle(win, 'color', color, ID_struct);
     end % fontColor
     
     function fontWeight(uiElement, weight)
