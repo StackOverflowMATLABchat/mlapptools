@@ -20,7 +20,7 @@
 ## Specifications
   - MATLAB Release: R20##a/b
   - Operating System: 
-
+  - `mlapptools` version (or commit link/hash): 
 
 ## Additional Information
 <!--- This is the place for any other information or insights that you think might help us pinpoint or resolve the issue;
