@@ -252,9 +252,13 @@ classdef (Abstract) mlapptools
       idc = strcat(CELL_ID_PREFIX, num2str(idx(:)));
       % Preallocation:
       ID_obj(nR,1) = WidgetID;
+      % Get the window handle so we could execute some JS commands:
+      hWin = mlapptools.getWebWindow(hTable);
       % ID array population:
       for indI = 1:numel(idx)
-        ID_obj(indI) = WidgetID(mlapptools.DEF_ID_ATTRIBUTE, idc{indI} );
+        jsCommand = sprintf('dojo.byId(%s).childNodes[0].id', idc{indI});
+        textFieldID = hWin.executeJS(jsCommand);
+        ID_obj(indI) = WidgetID(mlapptools.DEF_ID_ATTRIBUTE, textFieldID(2:end-1) );
       end
     end % getTableCellID
     
@@ -278,6 +282,7 @@ classdef (Abstract) mlapptools
         case {'uipanel','figure','uitabgroup','uitab'}
           widgetID = WidgetID('data-tag', mlapptools.getDataTag(uiElement));
         case 'uitable'
+          TAB_PREFIX = "mgg_";
           % uitables are inconsistent with other elements, their id always starts with 
           % "mgg_". So we list all widgets and select the "table-suspects" among them.
           % Note: the listing is not really necessary, as it is possible to search for  
@@ -285,8 +290,8 @@ classdef (Abstract) mlapptools
           % web(['http://dojotoolkit.org/reference-guide/1.10/dojo/query.html',...
           %      '#additional-selectors-supported-by-lite-engine'], '-browser');          
           [~,tmp] = mlapptools.getWidgetList( ancestor(uiElement,'figure') );
-          widgetID = arrayfun(@(x)WidgetID('id',x), ...
-                              string(tmp.id(contains(tmp.id, "mgg_"))));
+          widgetID = arrayfun(@(x)WidgetID(mlapptools.DEF_ID_ATTRIBUTE, x), ...
+                              string(tmp.id(contains(tmp.id, TAB_PREFIX))));
         otherwise % default:
           widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
       end
