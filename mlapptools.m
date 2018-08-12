@@ -277,6 +277,16 @@ classdef (Abstract) mlapptools
           warning(warnState); % Restore warning state
         case {'uipanel','figure','uitabgroup','uitab'}
           widgetID = WidgetID('data-tag', mlapptools.getDataTag(uiElement));
+        case 'uitable'
+          % uitables are inconsistent with other elements, their id always starts with 
+          % "mgg_". So we list all widgets and select the "table-suspects" among them.
+          % Note: the listing is not really necessary, as it is possible to search for  
+          % nodes having a property that starts with a certain string: E[foo^="bar"]
+          % web(['http://dojotoolkit.org/reference-guide/1.10/dojo/query.html',...
+          %      '#additional-selectors-supported-by-lite-engine'], '-browser');          
+          [~,tmp] = mlapptools.getWidgetList( ancestor(uiElement,'figure') );
+          widgetID = arrayfun(@(x)WidgetID('id',x), ...
+                              string(tmp.id(contains(tmp.id, "mgg_"))));
         otherwise % default:
           widgetID = mlapptools.getWidgetID(win, mlapptools.getDataTag(uiElement));
       end
