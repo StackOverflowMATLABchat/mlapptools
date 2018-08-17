@@ -97,21 +97,23 @@ classdef (Abstract) mlapptools
       
     end % addClasses
     
-    function addCssToHead(hWin, cssText)
-      % A method for adding an inline CSS to the HTML <head> section.
+    function addToHead(hWin, nodeText)
+      % A method for adding nodes (<style>, <script>, ... ) to the HTML <head> section.
       
-      % in the future, cssText could be a local or a remote ile path:
-      if isfile(cssText)
-        warning(['.css files are not supported at this time. Please provide a "stringified" CSS instead.'...
-          '\nSee also: https://github.com/Khlick/matlabUiHacks/blob/master/utils/stringify.m'],[]);
-      elseif ~isempty(regexpi(cssText,'http(s)?://'))
-        warning(['Remote .css files are not supported at this time. Please provide a "stringified" CSS instead.'...
-          '\nSee also: https://github.com/Khlick/matlabUiHacks/blob/master/utils/stringify.m'],[]);
+      % in the future, nodeText could be a local or a remote file path:
+      if isfile(nodeText)
+        warning(['Files are not supported at this time.'...
+          ' Please provide a "stringified" input instead.'...
+          '\nInput can be "<style ...></style>" or "<script ...></script>".'],[]);
+      elseif ~isempty(regexpi(nodeText,'http(s)?://'))
+        warning(['Remote files are not supported at this time.',...
+          ' Please provide a "stringified" input instead.'...
+          '\nInput can be "<style ...></style>" or "<script ...></script>".'],[]);
       end
       
-      % Inject the CSS:
-      hWin.executeJS(['document.head.innerHTML += ', cssText]);      
-    end % addCssToHead
+      % Inject the nodeText:
+      hWin.executeJS(['document.head.innerHTML += ', nodeText]);      
+    end % addToHead
     
     function fontColor(uiElement, color)
       % A method for manipulating text color.
@@ -653,7 +655,7 @@ classdef (Abstract) mlapptools
     
     function [data_tag] = getDataTag(uiElement)
       warnState = mlapptools.toggleWarnings('off');
-      data_tag = char(struct(uiElement).Controller.ProxyView.PeerNode.getId);
+      data_tag = char( struct(uiElement).Controller.ProxyView.PeerNode.getId() );
       warning(warnState);
     end % getDataTag
     
@@ -664,7 +666,9 @@ classdef (Abstract) mlapptools
       %   is associated with the input webwindow.
       hFigs = findall(groot, 'Type', 'figure');
       warnState = mlapptools.toggleWarnings('off');
-      hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs));
+      % Distinguish java figures from web figures:
+      hUIFigs = hFigs(arrayfun(@(x)isstruct(struct(x).ControllerInfo), hFigs)); 
+    % hUIFigs = hFigs(arrayfun(@matlab.ui.internal.isUIFigure, hFigs)); % "official" way?
       if isempty(hUIFigs)
         hFig = gobjects(0);
         return
