@@ -218,7 +218,7 @@ classdef (Abstract) mlapptools
       hWin.executeJS('W = undefined');
     end % getParentNodeID
     
-    function [widgetID] = getTableCellID(hUITable, r, c)
+    function [widgetIDs] = getTableCellID(hUITable, r, c)
       % This method returns one or more ID objects, corresponding to specific cells in a
       % uitable, as defined by the cells' row and column indices.
       %% Constants:
@@ -235,14 +235,14 @@ classdef (Abstract) mlapptools
       %% Computing the offset
       % If there's more than one uitable in the figure, IDs are assigned
       % consecutively. For example, in the case of a 3x3 and 4x4 arrays,
-      % where the smaller table was created first, IDs will assigned as follows:
+      % where the smaller table was created first, IDs are assigned as follows:
       %
       %  [ 0  1  2   [ 9 10 11 12
       %    3  4  5    13 14 15 16
       %    6  7  8]   17 18 19 20
       %               21 22 23 24]
       %
-      % ... which is why if want to change the 2nd table we need to offset the
+      % ... which is why if we want to change the 2nd table we need to offset the
       % IDs by the total amount of elements in all preceding arrays, which is 9.
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       % Get siblings (flipping to negate that newer children appear first)
@@ -256,14 +256,14 @@ classdef (Abstract) mlapptools
       idx = sub2ind(sz, c, r) + offset - 1; % -1 because JS IDs are 0-based
       idc = strcat(CELL_ID_PREFIX, num2str(idx(:)));
       % Preallocation:
-      widgetID(nR,1) = WidgetID;
+      widgetIDs(nR,1) = WidgetID;
       % Get the window handle so we could execute some JS commands:
       hWin = mlapptools.getWebWindow(hUITable);
       % ID array population:
       for indI = 1:numel(idx)
         jsCommand = sprintf('dojo.byId(%s).childNodes[0].id', idc{indI});
         textFieldID = hWin.executeJS(jsCommand);
-        widgetID(indI) = WidgetID(mlapptools.DEF_ID_ATTRIBUTE, textFieldID(2:end-1) );
+        widgetIDs(indI) = WidgetID(mlapptools.DEF_ID_ATTRIBUTE, textFieldID(2:end-1) );
       end
     end % getTableCellID
     
@@ -290,12 +290,17 @@ classdef (Abstract) mlapptools
           widgetID = WidgetID('data-tag', mlapptools.getDataTag(hUIElement));
         case 'uitable'
           TAB_PREFIX = "mgg_";
-          % uitables are inconsistent with other elements, their id always starts with 
-          % "mgg_". So we list all widgets and select the "table-suspects" among them.
-          % Note: the listing is not really necessary, as it is possible to search for  
-          % nodes having a property that starts with a certain string: E[foo^="bar"]
-          % web(['http://dojotoolkit.org/reference-guide/1.10/dojo/query.html',...
-          %      '#additional-selectors-supported-by-lite-engine'], '-browser');          
+          % Notes:
+          % 1) uitables are inconsistent with other elements, their id always starts with
+          %    "mgg_". So we list all widgets and select the "table-suspects" among them.
+          % 2) It's probably more useful to style the individual cells rather than the
+          %    table itself. See: getTableCellID
+          % 3) The listing is not necessary, as it is possible to search for nodes
+          %    having a property that starts with a certain string: E[foo^="bar"]
+          %{
+          web(['http://dojotoolkit.org/reference-guide/1.10/dojo/query.html',...
+               '#additional-selectors-supported-by-lite-engine'], '-browser');        
+          %}
           [~,tmp] = mlapptools.getWidgetList( ancestor(hUIElement,'figure') );
           widgetID = arrayfun(@(x)WidgetID(mlapptools.DEF_ID_ATTRIBUTE, x), ...
                               string(tmp.id(contains(tmp.id, TAB_PREFIX))));
@@ -461,90 +466,90 @@ classdef (Abstract) mlapptools
     function unlockUIFig(hUIFig)
       % This method allows the uifigure to be opened in an external browser,
       % as was possible before R2017b.
-            assert(checkCert(), 'Certificate not imported; cannot proceed.');
+      assert(checkCert(), 'Certificate not imported; cannot proceed.');
       if verLessThan('matlab','9.3')
         % Do nothing, since this is not required pre-R2017b.
       else
         struct(hUIFig).Controller.ProxyView.PeerNode.setProperty('hostType','""');
       end
-            
-          function tf = checkCert()
-            % This tools works on the OS-level, and was tested on Win 7 & 10.
-            %
-            % With certain browsers it might not be required/helpful as noted in
-            % https://askubuntu.com/questions/73287/#comment1533817_94861 :
-            % Note that Chromium and Firefox do not use the system CA certificates, 
-            % so require separate instructions. 
-            %  - In Chromium, visit chrome://settings/certificates, click Authorities, 
-            %    then click import, and select your .pem.
-            %  - In Firefox, visit about:preferences#privacy, click Certificates,
-            %    View Certificates, Authorities, then click Import and select your .pem.
-            SUCCESS_CODE = 0;
-            CL = connector.getCertificateLocation(); % certificate location; 
-            if isempty(CL), CL = fullfile(prefdir, 'thisMatlab.pem'); end
-            %% Test if certificate is already accepted:
-            switch true
+      
+      function tf = checkCert()
+        % This tools works on the OS-level, and was tested on Win 7 & 10.
+        %
+        % With certain browsers it might not be required/helpful as noted in
+        % https://askubuntu.com/questions/73287/#comment1533817_94861 :
+        % Note that Chromium and Firefox do not use the system CA certificates,
+        % so require separate instructions.
+        %  - In Chromium, visit chrome://settings/certificates, click Authorities,
+        %    then click import, and select your .pem.
+        %  - In Firefox, visit about:preferences#privacy, click Certificates,
+        %    View Certificates, Authorities, then click Import and select your .pem.
+        SUCCESS_CODE = 0;
+        CL = connector.getCertificateLocation(); % certificate location;
+        if isempty(CL), CL = fullfile(prefdir, 'thisMatlab.pem'); end
+        %% Test if certificate is already accepted:
+        switch true
+          case ispc
+            [s,c] = system('certutil -verifystore -user "Root" localhost');
+          case isunix
+            [s,c] = system(['openssl crl2pkcs7 -nocrl -certfile '...
+              '/etc/ssl/certs/ca-certificates.crt '...
+              '| openssl pkcs7 -print_certs -noout '...
+              '| grep ''^issuer=/C=US/O=company/CN=localhost/OU=engineering''']);
+          case ismac
+            [s,c] = system('security find-certificate -c "localhost"');
+        end
+        isAccepted = s == SUCCESS_CODE;
+        
+        %% Try to import certificate:
+        if isAccepted
+          wasImported = false;
+        else
+          reply = questdlg('Certificate not found. Would you like to import it?',...
+            'Import "localhost" certificate','Yes','No','Yes');
+          if strcmp(reply,'Yes'), switch true %#ok<ALIGN>
               case ispc
-                [s,c] = system('certutil -verifystore -user "Root" localhost');
+                [s,c] = system(['certutil -addstore -user "Root" ' CL]);
+                % %APPDATA%\MathWorks\MATLAB\R20##x\thisMatlab.pem
               case isunix
-                [s,c] = system(['openssl crl2pkcs7 -nocrl -certfile '...
-                  '/etc/ssl/certs/ca-certificates.crt '...
-                  '| openssl pkcs7 -print_certs -noout '...
-                  '| grep ''^issuer=/C=US/O=company/CN=localhost/OU=engineering''']);
-              case ismac 
-                [s,c] = system('security find-certificate -c "localhost"');
-            end
-            isAccepted = s == SUCCESS_CODE;
-            
-            %% Try to import certificate:
-            if isAccepted
-              wasImported = false;
-            else
-              reply = questdlg('Certificate not found. Would you like to import it?',...
-                               'Import "localhost" certificate','Yes','No','Yes');
-              if strcmp(reply,'Yes'), switch true %#ok<ALIGN>
-                case ispc
-                  [s,c] = system(['certutil -addstore -user "Root" ' CL]);
-                  % %APPDATA%\MathWorks\MATLAB\R20##x\thisMatlab.pem
-                case isunix
-                  [s,c] = system(['sudo cp ' CL ...
-                    ' /usr/local/share/ca-certificates/localhost-matlab.crt && ',...
-                    'sudo update-ca-certificates']);
-                  % ~/.matlab/thisMatlab.pem
-                case ismac % https://apple.stackexchange.com/a/80625
-                  [s,c] = system(['security add-trusted-cert -d -r trustRoot -p ssl -k ' ...
-                                  '"$HOME/Library/Keychains/login.keychain" ' CL]);
-                  % ~/Library/Application\ Support/MathWorks/MATLAB/R20##x/thisMatlab.pem 
-                end % switch   
-                wasImported = s == SUCCESS_CODE;
-              else
-                warning('Certificate import cancelled by user!');
-                wasImported = false;
-              end
-            end
-            %% Report result
-            tf = isAccepted || wasImported;
-            if wasImported
-              fprintf(1, '\n%s\n%s\n%s\n',...
-                ['Certificate import successful! You should now be '...
-                 'able to navigate to the webwindow URL in your browser.'],...
-                ['If the figure is still blank, recreate it and navigate '...
-                 'to the new URL.'],...
-                ['Also, if you have a script blocking addon (e.g. NoScript), '...
-                 'be sure to whitelist "localhost".']);
-            elseif ~isAccepted % && ~wasImported (implicitly)
-              disp(c);
-              fprintf(1, '\n%s\n%s\n\t%s\n\t%s\n%s\n',...
-                'Either certificate presence cannot be determined, or the import failed.',...
-                'If you''re using Chromium or Firefox you can follow these instructions:',...
-               ['- In Chromium, visit chrome://settings > (Show advanced) > '...
-               'Manage HTTP/SSL certificates > Trusted Root Certification Authorities Tab'...
-               ' > Import, and select your .pem.'],...
-               ['- In Firefox, visit about:preferences#privacy, click Certificates > ',...
-                'View Certificates > Authorities > Import, and select your .pem.'],...
-               ['The certificate is found here: ' CL ]);
-            end
-          end % checkCert
+                [s,c] = system(['sudo cp ' CL ...
+                  ' /usr/local/share/ca-certificates/localhost-matlab.crt && ',...
+                  'sudo update-ca-certificates']);
+                % ~/.matlab/thisMatlab.pem
+              case ismac % https://apple.stackexchange.com/a/80625
+                [s,c] = system(['security add-trusted-cert -d -r trustRoot -p ssl -k ' ...
+                  '"$HOME/Library/Keychains/login.keychain" ' CL]);
+                % ~/Library/Application\ Support/MathWorks/MATLAB/R20##x/thisMatlab.pem
+            end % switch
+            wasImported = s == SUCCESS_CODE;
+          else
+            warning('Certificate import cancelled by user!');
+            wasImported = false;
+          end
+        end
+        %% Report result
+        tf = isAccepted || wasImported;
+        if wasImported
+          fprintf(1, '\n%s\n%s\n%s\n',...
+            ['Certificate import successful! You should now be '...
+            'able to navigate to the webwindow URL in your browser.'],...
+            ['If the figure is still blank, recreate it and navigate '...
+            'to the new URL.'],...
+            ['Also, if you have a script blocking addon (e.g. NoScript), '...
+            'be sure to whitelist "localhost".']);
+        elseif ~isAccepted % && ~wasImported (implicitly)
+          disp(c);
+          fprintf(1, '\n%s\n%s\n\t%s\n\t%s\n%s\n',...
+            'Either certificate presence cannot be determined, or the import failed.',...
+            'If you''re using Chromium or Firefox you can follow these instructions:',...
+            ['- In Chromium, visit chrome://settings > (Show advanced) > '...
+            'Manage HTTP/SSL certificates > Trusted Root Certification Authorities Tab'...
+            ' > Import, and select your .pem.'],...
+            ['- In Firefox, visit about:preferences#privacy, click Certificates > ',...
+            'View Certificates > Authorities > Import, and select your .pem.'],...
+            ['The certificate is found here: ' CL ]);
+        end
+      end % checkCert
     end % unlockUIFig
     
     function hWin = waitForFigureReady(hUIFig)
@@ -658,9 +663,9 @@ classdef (Abstract) mlapptools
       end
     end % establishIdentity
     
-    function [data_tag] = getDataTag(hUIElement)
+    function [dataTag] = getDataTag(hUIElement)
       warnState = mlapptools.toggleWarnings('off');
-      data_tag = char( struct(hUIElement).Controller.ProxyView.PeerNode.getId() );
+      dataTag = char( struct(hUIElement).Controller.ProxyView.PeerNode.getId() );
       warning(warnState);
     end % getDataTag
     
@@ -685,7 +690,7 @@ classdef (Abstract) mlapptools
     end % figFromWebwindow
     
     function [widgetID] = getWidgetID(hWin, dataTag)
-      % This method returns a structure containing some uniquely-identifying information
+      % This method returns an object containing some uniquely-identifying information
       % about a DOM node.
       widgetquerystr = sprintf(...
         'dojo.getAttr(dojo.query("[data-tag^=''%s''] > div")[0], "widgetid")', dataTag);
@@ -733,17 +738,18 @@ classdef (Abstract) mlapptools
     end % getWidgetIDFromDijit
     
     function to = getTimeout(hUIFig)
-            if isempty(hUIFig) || ~isa(hUIFig, 'matlab.ui.Figure')
-              to = mlapptools.QUERY_TIMEOUT;
-            else
-              to = getappdata(hUIFig, mlapptools.TAG_TIMEOUT);
-              if isempty(to), to = mlapptools.QUERY_TIMEOUT; end
-            end
+      if isempty(hUIFig) || ~isa(hUIFig, 'matlab.ui.Figure')
+        to = mlapptools.QUERY_TIMEOUT;
+      else
+        to = getappdata(hUIFig, mlapptools.TAG_TIMEOUT);
+        if isempty(to), to = mlapptools.QUERY_TIMEOUT; end
+      end
     end % getTimeout
     
     function tf = isUIFigure(hFigList)
       tf = arrayfun(@(x)isa(x,'matlab.ui.Figure') && ...
         isstruct(struct(x).ControllerInfo), hFigList);
+      % See also: matlab.ui.internal.isUIFigure()
     end % isUIFigure
     
     function oldState = toggleWarnings(toggleStr)
