@@ -338,7 +338,7 @@ mlapptools.setStyle(myGUI.TextArea, 'background-image',...
 -----------------
 <a name="setTimeout"></a>
 
-#### *mlapptools*.**setTimeout**(*hUIFig*)
+#### *mlapptools*.**setTimeout**(*hUIFig*, *newTimeoutInSec*)
 
 ##### Description
 

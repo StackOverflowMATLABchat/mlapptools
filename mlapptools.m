@@ -7,7 +7,7 @@ classdef (Abstract) mlapptools
   %
   % aboutJSLibs    - Return version information about certain JS libraries.
   % addClasses     - Add specified CSS classes to one or more DOM nodes.
-  % addCssToHead   - Inject inline CSS into the <head> section of the figure's HTML.
+  % addToHead      - Inject inline CSS/JS into the <head> section of the figure's HTML.
   % fontColor      - Modify font color.
   % fontWeight     - Modify font weight.
   % getHTML        - Return the full HTML code of a uifigure.
@@ -104,11 +104,11 @@ classdef (Abstract) mlapptools
       if isfile(nodeText)
         warning(['Files are not supported at this time.'...
           ' Please provide a "stringified" input instead.'...
-          '\nInput can be "<style ...></style>" or "<script ...></script>".'],[]);
+          '\nInput can be "<style>...</style>" or "<script>...</script>".'],[]);
       elseif ~isempty(regexpi(nodeText,'http(s)?://'))
         warning(['Remote files are not supported at this time.',...
           ' Please provide a "stringified" input instead.'...
-          '\nInput can be "<style ...></style>" or "<script ...></script>".'],[]);
+          '\nInput can be "<style>...</style>" or "<script>...</script>".'],[]);
       end
       
       % Inject the nodeText:
@@ -766,7 +766,7 @@ classdef (Abstract) mlapptools
           warning('off',OJF);
           warning('off',SOO);
         otherwise
-          % Do nothing
+          warning(['Unrecognized option "' toggleStr '". Please use either "on" or "off".']);
       end
     end % toggleWarnings
     
