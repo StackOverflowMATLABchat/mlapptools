@@ -304,6 +304,15 @@ classdef (Abstract) mlapptools
           [~,tmp] = mlapptools.getWidgetList( ancestor(hUIElement,'figure') );
           widgetID = arrayfun(@(x)WidgetID(mlapptools.DEF_ID_ATTRIBUTE, x), ...
                               string(tmp.id(contains(tmp.id, TAB_PREFIX))));
+        case 'axes'
+          % For uiaxes we return the <canvas> object. This canvas has a context 
+          % of type "webgl".
+          % See also: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
+          warning(['UIAxes object detected. Returning the innermost <canvas> element. '...
+                   'Be advised that mlapptools cannot modify this element, which '...
+                   'instead requires using WebGL commands via `hWin.executeJS(...)`.']);          
+          widgetID = mlapptools.getDecendentOfType( ...
+            hWin, mlapptools.getDataTag(hUIElement), 'canvas');
         otherwise % default:
           widgetID = mlapptools.getWidgetID(hWin, mlapptools.getDataTag(hUIElement));
       end
