@@ -529,6 +529,37 @@
       }        
     ]   
   },
+  "mlapptools.getDecendentOfType":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"ancestorDataTag",
+        "kind":"required",
+        "purpose":"HTML node's data_tag",
+        "type":["char"]
+      },
+      {
+        "name":"descendentType",
+        "kind":"required",
+        "purpose":"Target descendent's HTML tag",
+        "type":["char"]
+      }	  	  
+    ],
+    "outputs":
+    [
+      {
+        "name":"widgetID",
+        "type":["WidgetID"]
+      }       
+    ]   
+  },  
   "mlapptools.figFromWebwindow":
   {
     "inputs":

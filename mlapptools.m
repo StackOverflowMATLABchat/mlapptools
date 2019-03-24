@@ -669,6 +669,26 @@ classdef (Abstract) mlapptools
       warning(warnState);
     end % getDataTag
     
+    function [widgetID] = getDecendentOfType(hWin, ancestorDataTag, descendentType)
+      % This method returns a node's first descendent of a specified <type>.
+      % See also: 
+      % https://dojotoolkit.org/reference-guide/1.10/dojo/query.html#standard-css2-selectors      
+      widgetquerystr = sprintf(...
+        'dojo.getAttr(dojo.query("[data-tag^=''%s''] %s")[0], "%s")', ...
+        ancestorDataTag, descendentType, mlapptools.DEF_ID_ATTRIBUTE);
+      try % should work for most UI objects
+        ID = hWin.executeJS(widgetquerystr);
+        if ~strcmpi(ID,'null')
+          widgetID = WidgetID(mlapptools.DEF_ID_ATTRIBUTE, ID(2:end-1));
+          return
+        end
+      catch
+        warning(['Error encountered while obtaining a descendent of ', ancestorDataTag]);
+      end      
+       % If the JS command failed, or no descendent found, return an empty WidgetID object.
+      widgetID = WidgetID();
+    end % getDecendentOfType
+    
     function hFig = figFromWebwindow(hWin)
       % Using this method is discouraged as it's relatively computation-intensive.
       % Since the figure handle is not a property of the webwindow or its children
