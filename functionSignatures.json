@@ -1,0 +1,790 @@
+{
+  "_schemaVersion": "1.0.0",
+  "_typedefs" : {
+    "PLACEHOLDER_STRUCT": {
+        "type": "struct",
+        "fields": [
+            {"name": "PLACEHOLDER1", "type": "char"},
+            {"name": "PLACEHOLDER2", "type": ["double","size=1,1"]}
+        ]
+    },
+    "PLACEHOLDER_CELL": {
+        "type": "cell",
+        "elements": {
+            "type": "struct:PLACEHOLDER_STRUCT"
+        }
+    }
+  },
+  "%%%%%%%%%%%%%%%1": "PUBLIC STATIC METHODS START HERE %%%%%%%%%%%%%%%%",
+  "mlapptools.aboutJSLibs":
+  {
+    "outputs":
+    [
+        {
+          "name":"jsLibVersions",
+          "type":"struct"
+        }
+    ]
+  },
+  "mlapptools.addClasses":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIElement", 
+        "kind":"required",
+        "purpose":"hUIElement handle",
+        "type":["matlab.ui.control.internal.model.ComponentModel"]
+      },
+      {
+        "name":"cssClasses",
+        "kind":"required", 
+        "purpose":"Classes to add",
+        "type":[["char"],["string"],["cell"]]
+      }
+    ]
+  },
+  "mlapptools.addToHead":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",     
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"nodeText",
+        "kind":"required",
+        "purpose":"<node>'s outerHTML",
+        "type":[["char"],["string"]]
+      }
+    ]
+  },
+  "mlapptools.fontColor":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIElement",     
+        "kind":"required",
+        "purpose":"hUIElement handle",
+        "type":["matlab.ui.control.internal.model.ComponentModel"]
+      },
+      {
+        "name":"color",
+        "kind":"required",
+        "purpose":"CSS color",
+        "type":[["char"],["string"]]
+      }
+    ]
+  },
+  "mlapptools.fontWeight":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIElement",     
+        "kind":"required",
+        "purpose":"hUIElement handle",
+        "type":["matlab.ui.control.internal.model.ComponentModel"]
+      },
+      {
+        "name":"color",
+        "kind":"required",
+        "purpose":"CSS font weight",
+        "type":[["char"],["string"]]
+      }
+    ]
+  },
+  "mlapptools.getChildNodeIDs":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"widgetID",
+        "kind":"required",
+        "purpose":"Widget ID object(s)",
+        "type":["WidgetID"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"childIDs",
+        "type":["WidgetID"]
+      }
+    ]   
+  },
+  "mlapptools.getHTML":
+  {
+    "inputs":
+    [
+      {
+        "name":"hFigOrWin",
+        "kind":"required",
+        "purpose":"UIFigure or webWindow handle",
+        "type":["matlab.internal.webwindow", "matlab.ui.Figure"]
+      }
+    ],
+     "outputs":
+     [
+        {
+          "name":"fullHTML",
+          "type":["char"]
+        }
+     ]   
+  },
+  "mlapptools.getParentNodeID":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"widgetID",
+        "kind":"required",
+        "purpose":"Widget ID object(s)",
+        "type":["WidgetID"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"parentID",
+        "type":["WidgetID"]
+      }
+    ]   
+  },
+  "mlapptools.getTableCellID":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUITable",
+        "kind":"required",
+        "purpose":"UITable handle",
+        "type":["matlab.ui.control.Table"]
+      },
+      {
+        "name":"r",
+        "kind":"required",
+        "purpose":"Row indices",
+        "type":["numeric"]
+      },
+      {
+        "name":"c",
+        "kind":"required",
+        "purpose":"Column indices",
+        "type":["numeric"]
+      }                
+    ],
+    "outputs":
+    [
+      {
+        "name":"widgetIDs",
+        "type":["WidgetID"]
+      }      
+    ]   
+  },
+  "mlapptools.getWebElements":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIElement",
+        "kind":"required",
+        "purpose":"Web component handle",
+        "type":["matlab.ui.control.WebComponent"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"hWin",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"widgetID",
+        "type":["WidgetID"]
+      }
+    ]   
+  },
+  "mlapptools.getWebWindow":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIElement",
+        "kind":"required",
+        "purpose":"Web component handle",
+        "type":["matlab.ui.control.WebComponent"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"hWin",
+        "type":["matlab.internal.webwindow"]
+      }       
+    ]   
+  },
+  "mlapptools.getWidgetInfo":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"widgetID",
+        "kind":"required",
+        "purpose":"Widget ID object(s)",
+        "type":["WidgetID"]
+      },
+      {
+        "name":"verboseFlag",
+        "kind":"optional",
+        "purpose":"Log printing setting",
+        "type":["boolean", "scalar"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"nfo",
+        "type":["struct"]
+      }       
+    ]
+  },
+  "mlapptools.getWidgetList":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIFig",
+        "kind":"required",
+        "purpose":"UIFigure handle",
+        "type":["matlab.ui.Figure"]
+      },
+      {
+        "name":"verboseFlag",
+        "kind":"optional",
+        "purpose":"Log printing setting",
+        "type":["boolean", "scalar"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"widgetInfoStruct",
+        "type":["struct"]
+      },
+      {
+        "name":"widgetInfoTable",
+        "type":["table"]
+      }          
+    ]
+  },
+  "mlapptools.setStyle":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIElement",     
+        "kind":"required",
+        "purpose":"hUIElement handle",
+        "type":["matlab.ui.control.internal.model.ComponentModel"]
+      },
+      {
+        "name":"styleAttr",
+        "kind":"required",
+        "purpose":"CSS attribute name",
+        "type":[["char"],["string"]]
+      },
+      {
+        "name":"styleValue",
+        "kind":"required",
+        "purpose":"CSS attribute value",
+        "type":[["char"],["string"]]
+      }
+    ]
+  },
+  "mlapptools.setStyle":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"styleAttr",
+        "kind":"required",
+        "purpose":"CSS attribute name",
+        "type":[["char"],["string"]]
+      },
+      {
+        "name":"styleValue",
+        "kind":"required",
+        "purpose":"CSS attribute value",
+        "type":[["char"],["string"]]
+      },
+      {
+        "name":"widgetID",
+        "kind":"required",
+        "purpose":"Widget ID object(s)",
+        "type":["WidgetID"]
+      }
+    ]
+  },
+  "mlapptools.setTimeout":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIFig",
+        "kind":"required",
+        "purpose":"UIFigure handle",
+        "type":["matlab.ui.Figure"]
+      },
+      {
+        "name":"newTimeoutInSec",
+        "kind":"required",
+        "purpose":"New timeout setting",
+        "type":["numeric", "scalar"]
+      }
+    ]
+  },
+  "mlapptools.textAlign":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIElement",     
+        "kind":"required",
+        "purpose":"hUIElement handle",
+        "type":["matlab.ui.control.internal.model.ComponentModel"]
+      },
+      {
+        "name":"alignment",
+        "kind":"required",
+        "purpose":"CSS text alignment",
+        "type":[["char"],["string"]]
+      }
+    ]
+  },
+  "mlapptools.unlockUIFig":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIFig",
+        "kind":"required",
+        "purpose":"UIFigure handle",
+        "type":["matlab.ui.Figure"]
+      }
+    ]
+  },
+  "mlapptools.waitForFigureReady":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIFig",
+        "kind":"required",
+        "purpose":"UIFigure handle",
+        "type":["matlab.ui.Figure"]
+      }
+    ],
+    "outputs":
+    [
+       {
+         "name":"hWin",
+         "type":["matlab.internal.webwindow"]
+       }
+    ]
+  },
+  "%%%%%%%%%%%%%%%2": "PRIVATE STATIC METHODS START HERE %%%%%%%%%%%%%%%%",
+  "mlapptools.checkJavascriptSyntaxError":
+  {
+    "inputs":
+    [
+      {
+        "name":"ME",
+        "kind":"required",
+        "purpose":"Exception object",
+        "type":["MException"]
+      },
+      {
+        "name":"styleSetStr",
+        "kind":"required",
+        "purpose":"Dojo command",
+        "type":["char"]
+      }
+    ],
+    "outputs":
+    [
+       {
+         "name":"ME",
+         "type":["MException"]
+       }
+    ]    
+  },
+  "mlapptools.decodeDijitRegistryResult":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"verboseFlag",
+        "kind":"optional",
+        "purpose":"Log printing setting",
+        "type":["boolean", "scalar"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"widgets",
+        "type":["struct"]
+      }       
+    ]
+  },
+  "mlapptools.emptyStructWithFields":
+  {
+    "inputs":
+    [
+      {
+        "name":"fields",
+        "kind":"required",
+        "purpose":"List of IDs",
+        "type":["cell"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"eStruct",
+        "type":["struct"]
+      }       
+    ]
+  },
+  "mlapptools.establishIdentities":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"widgetID",
+        "type":["WidgetID"]
+      }
+    ]     
+  },
+  "mlapptools.getDataTag":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIElement",
+        "kind":"required",
+        "purpose":"Web component handle",
+        "type":["matlab.ui.control.WebComponent"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"dataTag",
+        "type":["char"]
+      }        
+    ]   
+  },
+  "mlapptools.getDecendentOfType":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"ancestorDataTag",
+        "kind":"required",
+        "purpose":"HTML node's data_tag",
+        "type":["char"]
+      },
+      {
+        "name":"descendentType",
+        "kind":"required",
+        "purpose":"Target descendent's HTML tag",
+        "type":["char"]
+      }	  	  
+    ],
+    "outputs":
+    [
+      {
+        "name":"widgetID",
+        "type":["WidgetID"]
+      }       
+    ]   
+  },  
+  "mlapptools.figFromWebwindow":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"hUIFig",
+        "type":["matlab.ui.Figure"]
+      }
+    ]
+  },
+  "mlapptools.getWidgetID":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"dataTag",
+        "kind":"required",
+        "purpose":"HTML node's data_tag",
+        "type":["char"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"widgetID",
+        "type":["WidgetID"]
+      }
+    ]
+  },
+  "mlapptools.getWidgetIDFromDijit":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"dataTag",
+        "kind":"required",
+        "purpose":"HTML node's data_tag",
+        "type":["char"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"widgetID",
+        "type":["WidgetID"]
+      }
+    ]
+  },
+  "mlapptools.getTimeout":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIFig",
+        "kind":"required",
+        "purpose":"UIFigure handle",
+        "type":["matlab.ui.Figure"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"to",
+        "type":["numeric"]
+      }        
+    ]
+  },
+  "mlapptools.isUIFigure":
+  {
+    "inputs":
+    [
+      {
+        "name":"hFigList",
+        "kind":"required",
+        "purpose":"Suspected UIFigure handles",
+        "type":["matlab.ui.Figure"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"tf",
+        "type":["logical"]
+      }
+    ]
+  },
+  "mlapptools.toggleWarnings":
+  {
+    "inputs":
+    [
+      {
+        "name":"toggleStr",
+        "kind":"required",
+        "purpose":"New warning setting",
+        "type":["char", "choices={'on','off'}"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"oldState",
+        "type":["struct", "vector"]
+      }
+    ]
+  },
+  "mlapptools.unifyStructs":
+  {
+    "inputs":
+    [
+      {
+        "name":"cellOfStructs",
+        "kind":"required",
+        "purpose":"Structs to unify",
+        "type":["cell"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"uStruct",
+        "type":["struct"]
+      }
+    ]
+  },
+  "mlapptools.validateAlignmentStr":
+  {
+    "inputs":
+    [
+      {
+        "name":"alignment",
+        "kind":"required",
+        "purpose":"CSS alignment",
+        "type":["char"]
+      }
+    ]
+  },
+  "mlapptools.validateCSScolor":
+  {
+    "inputs":
+    [
+      {
+        "name":"color",
+        "kind":"required",
+        "purpose":"CSS color",
+        "type":["char"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"color",
+        "purpose":"transformed color",
+        "type":["char"]
+      }
+    ]     
+  },
+  "mlapptools.validateFontWeight":
+  {
+    "inputs":
+    [
+      {
+        "name":"weight",
+        "kind":"required",
+        "purpose":"CSS font weight",
+        "type":["char"]
+      }
+    ],
+    "outputs":
+    [
+      {
+        "name":"weight",
+        "purpose":"transformed weight",
+        "type":["char"]
+      }
+    ]    
+  },
+  "mlapptools.waitTillFigureLoaded":
+  {
+    "inputs":
+    [
+      {
+        "name":"hUIFig",
+        "kind":"required",
+        "purpose":"UIFigure handle",
+        "type":["matlab.ui.Figure"]
+      }
+    ]
+  },
+  "mlapptools.waitTillWebwindowLoaded":
+  {
+    "inputs":
+    [
+      {
+        "name":"hWin",
+        "kind":"required",
+        "purpose":"webWindow handle",
+        "type":["matlab.internal.webwindow"]
+      },
+      {
+        "name":"hUIFig",
+        "kind":"required",
+        "purpose":"UIFigure handle",
+        "type":["matlab.ui.Figure"]
+      }
+    ]
+  }
+}
