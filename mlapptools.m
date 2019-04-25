@@ -288,7 +288,7 @@ classdef (Abstract) mlapptools
           warning(warnState); % Restore warning state
         case {'uipanel', 'figure', 'uitabgroup', 'uitab', ...
           'uiswitch', 'uitoggleswitch', 'uirockerswitch'}
-          widgetID = WidgetID('data-tag', mlapptools.getDataTag(uiElement));
+          widgetID = WidgetID('data-tag', mlapptools.getDataTag(hUIElement));
         case 'uitable'
           TAB_PREFIX = "mgg_";
           % Notes:
