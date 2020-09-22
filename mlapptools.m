@@ -286,8 +286,10 @@ classdef (Abstract) mlapptools
           warnState = mlapptools.toggleWarnings('off');
           widgetID = WidgetID('data-test-id', char(struct(hUIElement).NodeId));
           warning(warnState); % Restore warning state
-        case {'uipanel', 'figure', 'uitabgroup', 'uitab', ...
-          'uiswitch', 'uitoggleswitch', 'uirockerswitch'}
+        case { ...
+            'uipanel', 'figure', 'uitabgroup', 'uitab', 'uibutton', ...
+            'uiswitch', 'uitoggleswitch', 'uirockerswitch' ...
+            }
           widgetID = WidgetID('data-tag', mlapptools.getDataTag(hUIElement));
         case 'uitable'
           TAB_PREFIX = "mgg_";
@@ -789,17 +791,20 @@ classdef (Abstract) mlapptools
     
     function oldState = toggleWarnings(toggleStr)
       OJF = 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame';
+      JFR = 'MATLAB:ui:javaframe:PropertyToBeRemoved';
       SOO = 'MATLAB:structOnObject';
       if nargout > 0
-        oldState = [warning('query',OJF); warning('query',SOO)];
+        oldState = [warning('query',OJF); warning('query',SOO); warning('query',JFR)];
       end
       switch lower(toggleStr)
         case 'on'
           warning('on',OJF);
           warning('on',SOO);
+          warning('on',JFR);
         case 'off'
           warning('off',OJF);
           warning('off',SOO);
+          warning('off',JFR);
         otherwise
           warning(['Unrecognized option "' toggleStr '". Please use either "on" or "off".']);
       end
