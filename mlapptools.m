@@ -308,16 +308,24 @@ classdef (Abstract) mlapptools
           widgetID = arrayfun(@(x)WidgetID(mlapptools.DEF_ID_ATTRIBUTE, x), ...
                               string(tmp.id(contains(tmp.id, TAB_PREFIX))));
         case 'axes'
-          switch subsref(ver('matlab'), substruct('.','Version'))
-            case {'9.6'} % R2019a
-              descendType = 'img';
-            otherwise  % R2016a-R2018b
+          switch true
+            case verLessThan('matlab','9.0') % ver <= R2015b
+              throw(MException('getWebElements:MATLABTooOld',...
+                               'MATLAB versions before R2016a are not supported!'));
+            case verLessThan('matlab','9.6') % R2016a-R2018b
               descendType = 'canvas';
               % This canvas has a context of type "webgl".
               % See also: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
               warning(['UIAxes object detected. Returning the innermost <canvas> element. '...
                    'Be advised that mlapptools cannot modify this element, which '...
-                   'instead requires using WebGL commands via `hWin.executeJS(...)`.']); 
+                   'instead requires using WebGL commands via `hWin.executeJS(...)`.']);
+            case verLessThan('matlab','9.7') % R2019a
+              descendType = 'img';
+            otherwise % R2019b-????
+              descendType = 'canvas';
+              widgetID = mlapptools.getDecendentOfType( ...
+                hWin, mlapptools.getDataTag(hUIElement.Parent), descendType);
+              return
           end         
           widgetID = mlapptools.getDecendentOfType( ...
             hWin, mlapptools.getDataTag(hUIElement), descendType);
