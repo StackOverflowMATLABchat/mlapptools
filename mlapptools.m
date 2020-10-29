@@ -51,9 +51,13 @@ classdef (Abstract) mlapptools
       dojoVersion = matlab.internal.webwindowmanager.instance ...
         .windowList(winID).executeJS('dojo.version');
       
-      reactVersion = matlab.internal.webwindowmanager.instance ...
-        .windowList(winID).executeJS(...
-        'require("react/react.min").version;');
+      try
+        reactVersion = matlab.internal.webwindowmanager.instance ...
+          .windowList(winID).executeJS(...
+          'require("react/react.min").version;');
+      catch
+        reactVersion = "NaN";
+      end
       
       if tmpWindowCreated
         delete(f);
