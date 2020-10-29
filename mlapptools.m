@@ -353,8 +353,11 @@ classdef (Abstract) mlapptools
       
       hController = struct(struct(hUIFig).Controller);
       % Check for Controller version:
-      switch subsref(ver('matlab'), substruct('.','Version'))
-        case {'9.0','9.1'} % R2016a or R2016b
+      switch true
+        case verLessThan('matlab','9.0') % <= R2015b
+          throw(MException('getWebWindow:MATLABTooOld',...
+                           'MATLAB versions before R2016a are not supported!'));          
+        case verLessThan('matlab','9.2') % R2016a or R2016b (i.e., 9.0-9.1)
           hWin = hController.Container.CEF;
         otherwise  % R2017a onward
           hWin = struct(hController.PlatformHost).CEF;
@@ -701,13 +704,16 @@ classdef (Abstract) mlapptools
       warning(warnState);
     end % getDataTag
     
-    function [widgetID] = getDecendentOfType(hWin, ancestorDataTag, descendentType)
+    function [widgetID] = getDecendentOfType(hWin, ancestorDataTag, descendentType, descId)      
       % This method returns a node's first descendent of a specified <type>.
       % See also: 
       % https://dojotoolkit.org/reference-guide/1.10/dojo/query.html#standard-css2-selectors      
+      if nargin < 4
+        descId = 0;
+      end
       widgetquerystr = sprintf(...
-        'dojo.getAttr(dojo.query("[data-tag^=''%s''] %s")[0], "%s")', ...
-        ancestorDataTag, descendentType, mlapptools.DEF_ID_ATTRIBUTE);
+        'dojo.getAttr(dojo.query("[data-tag^=''%s''] %s")[%u], "%s")', ...
+        ancestorDataTag, descendentType, descId, mlapptools.DEF_ID_ATTRIBUTE);
       try % should work for most UI objects
         ID = hWin.executeJS(widgetquerystr);
         if ~strcmpi(ID,'null')
